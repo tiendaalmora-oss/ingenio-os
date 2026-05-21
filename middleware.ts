@@ -1,0 +1,88 @@
+/**
+ * Ingenio OS — Subdomain Middleware
+ *
+ * Resolves subdomains to internal paths:
+ *
+ *   verdepro.ingeniodigital.shop         → /verdepro
+ *   demo.verdepro.ingeniodigital.shop    → /verdepro/demo
+ *   manual.verdepro.ingeniodigital.shop  → /verdepro/manual
+ *
+ * Rules:
+ *  - Works on localhost (verdepro.localhost:3000)
+ *  - Works on production (*.ingeniodigital.shop)
+ *  - Ignores _next, api, static assets, favicon
+ *  - Never interferes with os.ingeniodigital.shop (root domain)
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+
+/** Root domains that are treated as the main app (no subdomain routing) */
+const ROOT_DOMAINS = ["os.ingeniodigital.shop", "localhost"];
+
+/** Sections that can be used as a subdomain prefix (before the project) */
+const SECTION_PREFIXES = ["demo", "manual"];
+
+/** Paths to skip — _next assets, api, static files, favicon */
+const SKIP_PATTERN = /^\/((_next|api|favicon\.ico|robots\.txt|sitemap\.xml))/;
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Skip Next.js internals and static assets
+  if (SKIP_PATTERN.test(pathname)) {
+    return NextResponse.next();
+  }
+
+  const host = request.headers.get("host") ?? "";
+
+  // Strip port if present (e.g. localhost:3000 → localhost)
+  const hostname = host.split(":")[0];
+
+  // Determine if we're on a root domain — no subdomain rewriting needed
+  if (ROOT_DOMAINS.includes(hostname)) {
+    return NextResponse.next();
+  }
+
+  // Parse subdomain structure from hostname
+  // Production: sub1.sub2.ingeniodigital.shop → parts = [sub1, sub2]
+  // Local:      verdepro.localhost → parts = [verdepro]
+  const isLocal = hostname.endsWith(".localhost");
+  const rootDomain = isLocal ? "localhost" : "ingeniodigital.shop";
+
+  // Remove root domain suffix to get subdomain parts
+  const subdomain = hostname.replace(`.${rootDomain}`, "");
+  const parts = subdomain.split(".");
+
+  let targetPath: string | null = null;
+
+  if (parts.length === 1) {
+    // verdepro.ingeniodigital.shop → /verdepro
+    targetPath = `/${parts[0]}${pathname === "/" ? "" : pathname}`;
+  } else if (parts.length === 2) {
+    // demo.verdepro.ingeniodigital.shop → /verdepro/demo
+    const [section, project] = parts;
+    if (SECTION_PREFIXES.includes(section)) {
+      targetPath = `/${project}/${section}${pathname === "/" ? "" : pathname}`;
+    }
+  }
+
+  if (targetPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = targetPath;
+    return NextResponse.rewrite(url);
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths EXCEPT for:
+     * - _next/static (static files)
+     * - _next/image (image optimization)
+     * - favicon.ico, robots.txt, sitemap.xml
+     */
+    "/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
+  ],
+};
