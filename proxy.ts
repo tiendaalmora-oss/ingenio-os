@@ -1,5 +1,5 @@
 /**
- * Ingenio OS — Subdomain Middleware
+ * Ingenio OS — Subdomain Proxy (Next.js 16)
  *
  * Resolves subdomains to internal paths:
  *
@@ -12,6 +12,8 @@
  *  - Works on production (*.ingeniodigital.shop)
  *  - Ignores _next, api, static assets, favicon
  *  - Never interferes with os.ingeniodigital.shop (root domain)
+ *
+ * Next.js 16: uses "proxy" file convention instead of deprecated "middleware"
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -25,7 +27,7 @@ const SECTION_PREFIXES = ["demo", "manual"];
 /** Paths to skip — _next assets, api, static files, favicon */
 const SKIP_PATTERN = /^\/((_next|api|favicon\.ico|robots\.txt|sitemap\.xml))/;
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip Next.js internals and static assets
