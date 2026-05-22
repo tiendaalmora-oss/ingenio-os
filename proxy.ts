@@ -22,7 +22,10 @@ import { NextRequest, NextResponse } from "next/server";
 const ROOT_DOMAINS = ["os.ingeniodigital.shop", "localhost"];
 
 /** Sections that can be used as a subdomain prefix (before the project) */
-const SECTION_PREFIXES = ["demo", "manual"];
+const SECTION_PREFIXES = ["demo", "manual", "app"];
+
+/** Legacy projects that should be served purely as static HTML from public/legacy */
+const LEGACY_PROJECTS = ["verdepro", "carnipro", "lavapro", "barberpro", "gympro"];
 
 /** Paths to skip — _next assets, api, static files, favicon */
 const SKIP_PATTERN = /^\/((_next|api|favicon\.ico|robots\.txt|sitemap\.xml))/;
@@ -58,13 +61,23 @@ export function proxy(request: NextRequest) {
   let targetPath: string | null = null;
 
   if (parts.length === 1) {
-    // verdepro.ingeniodigital.shop → /verdepro
-    targetPath = `/${parts[0]}${pathname === "/" ? "" : pathname}`;
+    // verdepro.ingeniodigital.shop
+    const project = parts[0];
+    if (LEGACY_PROJECTS.includes(project)) {
+      targetPath = pathname === "/" ? `/legacy/${project}/landing/index.html` : `/legacy/${project}/landing${pathname}`;
+    } else {
+      targetPath = `/${project}${pathname === "/" ? "" : pathname}`;
+    }
   } else if (parts.length === 2) {
-    // demo.verdepro.ingeniodigital.shop → /verdepro/demo
+    // demo.verdepro.ingeniodigital.shop
     const [section, project] = parts;
     if (SECTION_PREFIXES.includes(section)) {
-      targetPath = `/${project}/${section}${pathname === "/" ? "" : pathname}`;
+      // Si es un proyecto legacy y no es el dashboard de la app (que será en React)
+      if (LEGACY_PROJECTS.includes(project) && section !== "app") {
+        targetPath = pathname === "/" ? `/legacy/${project}/${section}/index.html` : `/legacy/${project}/${section}${pathname}`;
+      } else {
+        targetPath = `/${project}/${section}${pathname === "/" ? "" : pathname}`;
+      }
     }
   }
 
