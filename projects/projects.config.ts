@@ -25,6 +25,10 @@ export interface ProjectConfig {
   sections: ProjectSection[];
   /** OS Platform Extensions */
   status: ProjectStatus;
+  /** Marca este producto como template maestro reutilizable */
+  isTemplate?: boolean;
+  /** true = sirve HTML estático desde public/legacy/, false = componente React */
+  legacy?: boolean;
   metrics?: {
     mrr?: number;
     leads?: number;
@@ -47,6 +51,8 @@ export const projects: Record<string, ProjectConfig> = {
     tagline: "Software de gestión para verdulerías",
     sections: ["landing", "demo", "manual"],
     status: "launched",
+    isTemplate: true,
+    legacy: true,
     metrics: { mrr: 450, leads: 120, roas: 3.5 },
     deployment: { docker: true, ssl: true, domain: "verdepro.ingeniodigital.shop", status: "live" },
   },

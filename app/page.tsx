@@ -11,6 +11,8 @@ import { MetaOpsModule } from "./os/modules/MetaOpsModule";
 import { MetricsModule } from "./os/modules/MetricsModule";
 import { AIAgentsModule } from "./os/modules/AIAgentsModule";
 import { DeploymentCenterModule } from "./os/modules/DeploymentCenterModule";
+import { IntegrationsModule } from "./os/modules/IntegrationsModule";
+import { WorkflowsModule } from "./os/modules/WorkflowsModule";
 
 export default function IngenioOSDashboard() {
   const [activeModule, setActiveModule] = useState<ModuleId>("operations");
@@ -21,18 +23,20 @@ export default function IngenioOSDashboard() {
     landing_factory: "Fábrica de Landings",
     creative_lab: "Laboratorio Creativo",
     meta_ops: "Control Meta Ops",
-    metrics: "Métricas del Motor de Decisiones",
-    ai_agents: "Orquestación de Agentes IA",
+    metrics: "Motor de Decisiones — Métricas",
+    ai_agents: "Agentes IA",
     deployment_center: "Centro de Despliegue",
+    integrations: "Centro de Integraciones",
+    workflows: "Flujos de Automatización",
   };
 
   return (
     <main className="bg-zinc-950 text-white min-h-screen flex overflow-hidden">
       <Sidebar activeModule={activeModule} onSelect={setActiveModule} />
-      
+
       <div className="flex-1 flex flex-col h-screen overflow-hidden bg-black">
         <TopBar title={moduleTitles[activeModule]} />
-        
+
         <div className="flex-1 overflow-y-auto">
           {activeModule === "operations" && <OperationsModule />}
           {activeModule === "product_factory" && <ProductFactoryModule />}
@@ -42,6 +46,8 @@ export default function IngenioOSDashboard() {
           {activeModule === "metrics" && <MetricsModule />}
           {activeModule === "ai_agents" && <AIAgentsModule />}
           {activeModule === "deployment_center" && <DeploymentCenterModule />}
+          {activeModule === "integrations" && <IntegrationsModule />}
+          {activeModule === "workflows" && <WorkflowsModule />}
         </div>
       </div>
     </main>
