@@ -27,8 +27,8 @@ const SECTION_PREFIXES = ["demo", "manual", "app"];
 /** Legacy projects that should be served purely as static HTML from public/legacy */
 const LEGACY_PROJECTS = ["verdepro", "carnipro", "lavapro", "barberpro", "gympro"];
 
-/** Paths to skip — _next assets, api, static files, favicon */
-const SKIP_PATTERN = /^\/((_next|api|favicon\.ico|robots\.txt|sitemap\.xml))/;
+/** Paths to skip — _next assets, api, static files, favicon, and legacy folder */
+const SKIP_PATTERN = /^\/((_next|api|favicon\.ico|robots\.txt|sitemap\.xml|legacy))/;
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -43,8 +43,41 @@ export function proxy(request: NextRequest) {
   // Strip port if present (e.g. localhost:3000 → localhost)
   const hostname = host.split(":")[0];
 
-  // Determine if we're on a root domain — no subdomain rewriting needed
+  // Determine if we're on a root domain
   if (ROOT_DOMAINS.includes(hostname)) {
+    const parts = pathname.split("/").filter(Boolean);
+    if (parts.length > 0) {
+      const project = parts[0];
+      if (LEGACY_PROJECTS.includes(project)) {
+        let targetPath: string | null = null;
+        const subPath = parts.slice(1);
+
+        if (subPath.length === 0) {
+          // os.ingeniodigital.shop/verdepro -> /legacy/verdepro/landing/index.html
+          targetPath = `/legacy/${project}/landing/index.html`;
+        } else if (subPath[0] === "demo") {
+          // os.ingeniodigital.shop/verdepro/demo -> /legacy/verdepro/demo/index.html
+          const remaining = subPath.slice(1).join("/");
+          targetPath = remaining ? `/legacy/${project}/demo/${remaining}` : `/legacy/${project}/demo/index.html`;
+        } else if (subPath[0] === "manual") {
+          // os.ingeniodigital.shop/verdepro/manual -> /legacy/verdepro/manual/index.html
+          const remaining = subPath.slice(1).join("/");
+          targetPath = remaining ? `/legacy/${project}/manual/${remaining}` : `/legacy/${project}/manual/index.html`;
+        } else if (subPath[0] === "app") {
+          // Do not rewrite /verdepro/app, let Next.js routing serve the React app dashboard
+          return NextResponse.next();
+        } else {
+          // E.g. static assets loaded relative to landing, like /verdepro/img/logo.png
+          targetPath = `/legacy/${project}/landing/${subPath.join("/")}`;
+        }
+
+        if (targetPath) {
+          const url = request.nextUrl.clone();
+          url.pathname = targetPath;
+          return NextResponse.rewrite(url);
+        }
+      }
+    }
     return NextResponse.next();
   }
 

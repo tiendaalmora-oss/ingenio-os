@@ -33,6 +33,8 @@ ENV META_APP_ID=$META_APP_ID
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
+RUN cp -r public .next/standalone/
+RUN cp -r .next/static .next/standalone/.next/
 
 # 3. Production image, copy all the files and run next
 FROM node:20-alpine AS runner
