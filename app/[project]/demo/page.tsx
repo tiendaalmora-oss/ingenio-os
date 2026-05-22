@@ -3,7 +3,7 @@
  *
  * Loads the demo page from /projects/[project]/demo/page.tsx
  */
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getProject } from "@/projects/projects.config";
 
 interface Props {
@@ -16,8 +16,13 @@ export default async function ProjectDemoPage({ params }: Props) {
   const config = getProject(project);
   if (!config) notFound();
 
+  // Legacy projects served statically
+  if (config.legacy) {
+    redirect(`/legacy/${project}/demo/index.html`);
+  }
+
   try {
-    const mod = await import(`@/projects/${project}/demo/page`);
+    const mod = await import(`@/projects/${project}/demo/page.tsx`);
     const Page = mod.default;
     return <Page />;
   } catch {
