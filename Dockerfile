@@ -14,6 +14,20 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Declare Build Arguments passed by Easypanel during Docker build
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG SUPABASE_SERVICE_ROLE_KEY
+ARG META_ACCESS_TOKEN
+ARG META_APP_SECRET
+ARG META_APP_ID
+
+# Export Build Arguments as Environment Variables for npm run build
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+ENV META_ACCESS_TOKEN=$META_ACCESS_TOKEN
+ENV META_APP_SECRET=$META_APP_SECRET
+ENV META_APP_ID=$META_APP_ID
+
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
