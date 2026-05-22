@@ -8,6 +8,7 @@
  */
 
 export type ProjectSection = "landing" | "demo" | "manual";
+export type ProjectStatus = "idea" | "researching" | "validating" | "building" | "launched" | "scaling" | "paused";
 
 export interface ProjectConfig {
   /** Display name */
@@ -22,6 +23,19 @@ export interface ProjectConfig {
   tagline: string;
   /** Which sections this project currently has published */
   sections: ProjectSection[];
+  /** OS Platform Extensions */
+  status: ProjectStatus;
+  metrics?: {
+    mrr?: number;
+    leads?: number;
+    roas?: number;
+  };
+  deployment?: {
+    docker: boolean;
+    ssl: boolean;
+    domain: string;
+    status: "live" | "down" | "deploying";
+  };
 }
 
 export const projects: Record<string, ProjectConfig> = {
@@ -32,6 +46,9 @@ export const projects: Record<string, ProjectConfig> = {
     subdomain: "verdepro",
     tagline: "Software de gestión para verdulerías",
     sections: ["landing", "demo", "manual"],
+    status: "launched",
+    metrics: { mrr: 450, leads: 120, roas: 3.5 },
+    deployment: { docker: true, ssl: true, domain: "verdepro.ingeniodigital.shop", status: "live" },
   },
   lavapro: {
     name: "LavaPro",
@@ -40,6 +57,9 @@ export const projects: Record<string, ProjectConfig> = {
     subdomain: "lavapro",
     tagline: "Software de gestión para lavanderías",
     sections: ["landing", "demo", "manual"],
+    status: "scaling",
+    metrics: { mrr: 1200, leads: 350, roas: 5.2 },
+    deployment: { docker: true, ssl: true, domain: "lavapro.ingeniodigital.shop", status: "live" },
   },
   carnigestion: {
     name: "CarniGestión",
@@ -48,6 +68,9 @@ export const projects: Record<string, ProjectConfig> = {
     subdomain: "carnigestion",
     tagline: "Software de gestión para carnicerías",
     sections: ["landing", "demo", "manual"],
+    status: "building",
+    metrics: { leads: 45 },
+    deployment: { docker: true, ssl: false, domain: "carnigestion.ingeniodigital.shop", status: "deploying" },
   },
 };
 
