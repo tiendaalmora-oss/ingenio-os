@@ -76,15 +76,16 @@ export function LandingFactoryModule() {
                         <div className="text-xs text-zinc-500">{product.deployment_domain || 'No desplegado'}</div>
                       </div>
                     </div>
-                    {hasLanding ? (
-                      <a href={`/${product.slug}`} target="_blank" className="text-sm bg-zinc-800 px-3 py-1.5 rounded-lg hover:bg-zinc-700 transition-colors">
-                        Ver en Vivo ↗
+                    <div className="flex items-center gap-2">
+                      {hasLanding && (
+                        <a href={`/${product.slug}`} target="_blank" className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white px-2.5 py-1.5 rounded-lg transition-colors">
+                          Live ↗
+                        </a>
+                      )}
+                      <a href={`/os/landing/${product.slug}`} className="text-sm bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-3 py-1.5 rounded-lg hover:bg-cyan-500/20 transition-colors font-semibold">
+                        Abrir Landing HQ →
                       </a>
-                    ) : (
-                      <button className="text-sm bg-zinc-800 text-zinc-400 px-3 py-1.5 rounded-lg border border-dashed border-zinc-650 hover:text-white transition-colors">
-                        Crear Landing
-                      </button>
-                    )}
+                    </div>
                   </div>
                 );
               })}

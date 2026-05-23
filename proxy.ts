@@ -45,6 +45,20 @@ export function proxy(request: NextRequest) {
 
   // Determine if we're on a root domain
   if (ROOT_DOMAINS.includes(hostname)) {
+    // ---- PASSWORD PROTECTION (Dashboard & /os) ----
+    // Exclude /login to avoid redirect loops
+    if (pathname !== "/login") {
+      const correctPassword = process.env.DASHBOARD_PASSWORD || "ingenio2026";
+      const sessionCookie = request.cookies.get("ingenio_session");
+
+      if (sessionCookie?.value !== correctPassword) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/login";
+        return NextResponse.redirect(url);
+      }
+    }
+    // -----------------------------------------------
+
     const parts = pathname.split("/").filter(Boolean);
     if (parts.length > 0) {
       const project = parts[0];

@@ -1,0 +1,1599 @@
+﻿EVOLUCIÓN OPERACIONAL — INGENIO OS v3.1
+Sistema de Gestión Real de Productos
+CONTEXTO
+Ingenio OS ya funciona como Product Operating System:
+* Pipeline visual operativo
+* Productos dinámicos
+* Landing Factory
+* App Factory
+* Routing + Deploy funcional
+* Easypanel + Docker + Next.js estable
+Ahora debemos evolucionar desde:
+"dashboard visual"
+hacia:
+"sistema operativo real de validación de productos".
+OBJETIVO PRINCIPAL
+Convertir cada tarjeta del pipeline en un ACTIVO OPERACIONAL COMPLETO.
+No queremos un CRM pesado.
+No queremos complejidad enterprise.
+Queremos:
+* velocidad
+* claridad
+* documentación rápida
+* decisiones rápidas
+* validación agresiva
+========================================
+FASE 1 — PRODUCT DETAIL SYSTEM
+OBJETIVO:
+Cada idea/producto debe tener su propia página operacional editable.
+EJEMPLO:
+Click en:
+* VerdePro
+* PanPro
+* LavaPro
+↓
+Abre:
+/product/[slug]
+========================================
+ESTRUCTURA DE LA PRODUCT PAGE
+1. HEADER DEL PRODUCTO
+Mostrar:
+* Nombre
+* Nicho
+* Estado
+* Fecha creación
+* Prioridad
+* Badge:
+   * IDEA
+   * VALIDANDO
+   * CONSTRUYENDO
+   * LANZADO
+   * GANADOR
+   * DESCARTADO
+========================================
+2. NOTAS OPERATIVAS
+CRÍTICO.
+Textarea editable para guardar:
+* aprendizajes
+* hipótesis
+* resultados
+* observaciones
+* feedback de mercado
+* ideas de hooks
+* problemas detectados
+Ejemplo:
+* CTR inicial 3.2%
+* Hook "el desorden te hace perder plata" funcionó
+* Dueños responden bien a problema de stock
+* Probar versión roja
+IMPORTANTE:
+Guardar automáticamente.
+========================================
+3. LINKS IMPORTANTES
+Sección editable con:
+* Landing
+* Demo
+* Shopify
+* Canva
+* Ads Manager
+* Drive
+* WhatsApp
+* Notion
+* Manual
+Formato:
+label + url
+========================================
+4. MÉTRICAS DEL PRODUCTO
+Cards simples:
+* CTR
+* CPC
+* CPA
+* ROAS
+* CPM
+* Conversion Rate
+* Ticket promedio
+Por ahora:
+mock editable.
+Más adelante:
+Meta API real.
+========================================
+5. ESTADO OPERACIONAL
+Selector visual:
+🟢 GANADOR
+🟡 TESTEANDO
+🔴 MATAR
+🔵 ESCALAR
+Mostrar color en:
+* Board
+* Product Page
+* Sidebar
+========================================
+6. CHECKLIST OPERACIONAL
+Checklist editable:
+☐ Landing
+☐ Demo
+☐ Shopify
+☐ Pixel
+☐ Dominio
+☐ WhatsApp
+☐ Creativos
+☐ Ads
+☐ Automatización
+☐ Métricas
+OBJETIVO:
+Visualizar rápidamente qué falta.
+========================================
+7. SECCIÓN DE ADS / CREATIVOS
+Guardar:
+* hooks
+* copys
+* ángulos
+* thumbnails
+* conceptos UGC
+* resultados de anuncios
+Diseño tipo:
+Creative Vault.
+========================================
+8. DECISION LOG
+Historial operacional:
+Ejemplo:
+* "Movido a VALIDACIÓN"
+* "CTR > 3%"
+* "ROAS negativo"
+* "Escalar presupuesto"
+Objetivo:
+Registrar decisiones importantes.
+========================================
+FASE 2 — BOARD OPERACIONAL REAL
+MEJORAS:
+* Drag and Drop persistente
+* Estados guardados en Supabase
+* Filtros:
+   * ganadores
+   * testeando
+   * nicho
+   * prioridad
+* búsqueda rápida
+========================================
+FASE 3 — SCORE SYSTEM
+Crear Product Score automático.
+Ejemplo:
+score =
+CTR +
+ROAS +
+Conversion Rate -
+CPA
+Objetivo:
+Detectar productos ganadores rápidamente.
+========================================
+FASE 4 — IA OPERACIONAL
+Preparar arquitectura para:
+* Antigravity
+* Codex
+* Ollama
+* OpenRouter
+Cada producto podrá tener:
+* ideas IA
+* hooks IA
+* anuncios IA
+* análisis IA
+========================================
+REGLAS IMPORTANTES
+NO convertir Ingenio OS en:
+* CRM pesado
+* SaaS enterprise lento
+* dashboard corporativo
+SÍ mantener:
+* velocidad
+* simplicidad
+* claridad
+* ejecución rápida
+* validación agresiva
+========================================
+PRIORIDAD TÉCNICA
+1. Product Detail System
+2. Persistencia Supabase
+3. Board persistente
+4. Metrics editable
+5. Creative Vault
+6. Score System
+========================================
+OBJETIVO FINAL
+Construir:
+una máquina operacional para detectar,
+validar y escalar productos digitales rápidamente.
+No buscamos perfección técnica.
+Buscamos:
+VELOCIDAD OPERACIONAL + CASHFLOW.
+
+
+
+
+
+
+
+
+
+
+Evolución — Fábrica de Productos (Modo Operacional)
+
+
+Objetivo:
+Convertir la sección “Fábrica de Productos” en un verdadero centro operacional para lanzar, validar y escalar productos rápidamente.
+
+
+Mejoras necesarias:
+
+
+1. Product HQ
+Al hacer click en una card debe abrir:
+/product/[slug]
+
+
+Ejemplo:
+- /product/verdepro
+- /product/lavapro
+
+
+Ese espacio será el centro operativo del producto.
+
+
+2. Score Visual
+Agregar estados visuales rápidos:
+🟢 Winner
+🟡 Testing
+🔵 Scaling
+🔴 Dead
+
+
+Y un:
+Product Score (0-100)
+
+
+3. Métricas Operacionales
+Agregar soporte para:
+- CTR
+- CPC
+- CPA
+- ROAS
+- Ticket promedio
+- Ventas
+
+
+Aunque inicialmente sean manuales.
+
+
+4. Botones Operativos
+Agregar accesos rápidos:
+- Landing
+- Demo
+- Shopify
+- Canva
+- Ads
+- WhatsApp
+- Manual
+
+
+5. Estado del Ecosistema
+Mostrar:
+- Dominio
+- Pixel Meta
+- Shopify
+- n8n
+- WhatsApp
+- Supabase
+
+
+Con indicadores:
+✅ conectado
+❌ pendiente
+
+
+6. Prioridad Operativa
+Agregar etiquetas:
+🔥 Prioridad Alta
+⚡ Testeo
+🧊 Hold
+💀 Descartado
+
+
+7. Notas y Memoria Operacional
+Cada producto debe permitir:
+- agregar notas
+- guardar aprendizajes
+- registrar hooks ganadores
+- registrar observaciones
+- guardar decisiones tomadas
+
+
+IMPORTANTE:
+NO convertir esto en CRM enterprise.
+Mantener:
+- rapidez
+- simplicidad
+- visual limpio
+- enfoque operacional
+- velocidad de ejecución
+
+
+
+
+
+
+
+
+Evolución — Landing Factory (Arquitectura Operacional Real)
+
+
+Objetivo:
+Convertir “Fábrica de Landings” en un verdadero centro de producción y despliegue de landings, manteniendo responsabilidades claras y separadas del sistema.
+
+
+IMPORTANTE:
+Landing Factory NO debe manejar:
+- métricas
+- campañas
+- ROAS
+- Shopify analytics
+- Meta Ads
+
+
+Eso pertenece a:
+- Meta Ops
+- Metrics
+
+
+Landing Factory solo debe encargarse de:
+CREAR → EDITAR → CLONAR → DESPLEGAR landings.
+
+
+━━━━━━━━━━━━━━━━━━━
+ESTRUCTURA OPERACIONAL
+━━━━━━━━━━━━━━━━━━━
+
+
+Cada producto debe funcionar como un contenedor operativo independiente.
+
+
+Ejemplo:
+- VerdePro
+- CarniGestión
+- LavaPro
+
+
+Y dentro de cada producto existirán:
+
+
+Producto
+ ├── Landing Principal
+ ├── Variantes
+ ├── Demo
+ ├── Manual
+ ├── Assets
+ ├── Branding
+ ├── Código
+ └── Deploy
+
+
+━━━━━━━━━━━━━━━━━━━
+1. LANDING HQ
+━━━━━━━━━━━━━━━━━━━
+
+
+Al hacer click en un producto abrir:
+
+
+- /landing/verdepro
+- /landing/carnigestion
+
+
+Este espacio será el centro operacional de las landings del producto.
+
+
+━━━━━━━━━━━━━━━━━━━
+2. VARIANTES DE LANDING
+━━━━━━━━━━━━━━━━━━━
+
+
+Permitir múltiples variantes por producto:
+
+
+- Direct Response
+- VSL
+- WhatsApp
+- Oferta
+- Hook Dolor
+- Hook Miedo
+- Hook Transformación
+
+
+Funciones:
+- crear variante
+- duplicar variante
+- editar variante
+- publicar variante
+- archivar variante
+
+
+━━━━━━━━━━━━━━━━━━━
+3. DEMO Y MANUAL
+━━━━━━━━━━━━━━━━━━━
+
+
+Dentro del HQ permitir:
+
+
+- editar demo
+- editar manual
+- preview live
+- publicar cambios
+
+
+━━━━━━━━━━━━━━━━━━━
+4. ASSET MANAGER
+━━━━━━━━━━━━━━━━━━━
+
+
+Crear sistema interno de assets.
+
+
+Ejemplo:
+/public/assets/verdepro/
+
+
+Subcategorías:
+- hero
+- logos
+- mockups
+- videos
+- thumbnails
+- branding
+
+
+Funciones:
+- subir archivos
+- reemplazar archivos
+- eliminar archivos
+- copiar URL
+- organizar carpetas
+
+
+Objetivo:
+eliminar dependencia futura de GHL.
+
+
+━━━━━━━━━━━━━━━━━━━
+5. EDITOR OPERACIONAL RÁPIDO
+━━━━━━━━━━━━━━━━━━━
+
+
+NO crear builder visual complejo.
+
+
+Crear editor rápido para:
+- títulos
+- subtítulos
+- CTA
+- colores
+- precios
+- imágenes
+- testimonios
+- hooks
+
+
+Enfoque:
+máxima velocidad operacional.
+
+
+━━━━━━━━━━━━━━━━━━━
+6. ESTRUCTURA AUTOMÁTICA
+━━━━━━━━━━━━━━━━━━━
+
+
+Cuando se crea un producto nuevo:
+crear automáticamente:
+
+
+- carpeta del producto
+- data.ts
+- assets folder
+- landing base
+- demo base
+- manual base
+- branding folder
+
+
+━━━━━━━━━━━━━━━━━━━
+7. ACCESOS RÁPIDOS
+━━━━━━━━━━━━━━━━━━━
+
+
+Dentro del Landing HQ mostrar:
+
+
+- Landing Live
+- Demo
+- Manual
+- Código
+- Assets
+- Deploy
+
+
+━━━━━━━━━━━━━━━━━━━
+8. CLONACIÓN RÁPIDA
+━━━━━━━━━━━━━━━━━━━
+
+
+Agregar:
+“Clonar Producto”
+
+
+Ejemplo:
+Clonar VerdePro → PanaderiaPro
+
+
+Duplicando automáticamente:
+- estructura
+- branding
+- assets
+- configuración base
+- rutas
+
+
+━━━━━━━━━━━━━━━━━━━
+9. FILOSOFÍA DEL SISTEMA
+━━━━━━━━━━━━━━━━━━━
+
+
+NO convertir esto en:
+- WordPress
+- Elementor
+- Builder enterprise
+
+
+Priorizar:
+- velocidad
+- simplicidad
+- claridad
+- despliegue rápido
+- validación rápida
+- producción rápida
+
+
+Landing Factory debe comportarse como:
+“Centro de Producción de Landings”
+NO como un dashboard visual.
+
+
+
+
+
+
+
+
+Evolución — Creative Lab (Sistema Operacional Creativo)
+
+
+Objetivo:
+Transformar “Laboratorio Creativo” en un verdadero motor de producción, organización y experimentación creativa para adquisición de clientes.
+
+
+Creative Lab NO debe funcionar como:
+- galería visual
+- dashboard estático
+- lista de anuncios mock
+
+
+Debe funcionar como:
+“Sistema Operacional de Creativos”
+
+
+━━━━━━━━━━━━━━━━━━━
+ARQUITECTURA OPERACIONAL
+━━━━━━━━━━━━━━━━━━━
+
+
+Cada producto debe tener su propio espacio creativo independiente.
+
+
+Ejemplo:
+- /creative/verdepro
+- /creative/lavapro
+- /creative/carnigestion
+
+
+Estructura esperada:
+
+
+Producto
+ └── Creativos
+      ├── Hooks
+      ├── Copies
+      ├── Guiones
+      ├── Videos
+      ├── Thumbnails
+      ├── Variantes
+      ├── Winners
+      └── Archivados
+
+
+━━━━━━━━━━━━━━━━━━━
+1. CREATIVE HQ
+━━━━━━━━━━━━━━━━━━━
+
+
+Al hacer click en un creativo abrir:
+
+
+/creative/[product]/[creative-id]
+
+
+Ejemplo:
+- hook
+- copy
+- CTA
+- formato
+- estado
+- categoría
+- notas
+- resultados
+
+
+━━━━━━━━━━━━━━━━━━━
+2. SISTEMA DE HOOKS
+━━━━━━━━━━━━━━━━━━━
+
+
+Crear biblioteca de hooks reutilizables.
+
+
+Categorías:
+- dolor
+- miedo
+- transformación
+- autoridad
+- urgencia
+- humor
+- comparación
+- ahorro
+- status
+
+
+Cada hook debe permitir:
+- editar
+- duplicar
+- reutilizar
+- convertir en creativo
+- marcar winner
+
+
+━━━━━━━━━━━━━━━━━━━
+3. IA OPERACIONAL
+━━━━━━━━━━━━━━━━━━━
+
+
+Integrar IA para acelerar producción creativa.
+
+
+Funciones IA:
+- generar hooks
+- generar variantes
+- generar copies
+- generar CTA
+- generar captions
+- generar guiones UGC
+- generar scripts de reels
+- generar ideas de thumbnails
+
+
+NO usar IA como reemplazo creativo.
+Usarla como multiplicador de velocidad operacional.
+
+
+━━━━━━━━━━━━━━━━━━━
+4. VARIANT ENGINE
+━━━━━━━━━━━━━━━━━━━
+
+
+Permitir crear variantes automáticas.
+
+
+Ejemplo:
+Hook original:
+“¿Seguís usando Excel en tu verdulería?”
+
+
+Generar:
+- variante miedo
+- variante humor
+- variante urgencia
+- variante autoridad
+- variante transformación
+
+
+━━━━━━━━━━━━━━━━━━━
+5. STORAGE REAL
+━━━━━━━━━━━━━━━━━━━
+
+
+Todos los creativos deben tener almacenamiento real.
+
+
+Ejemplo:
+/public/ads/verdepro/
+
+
+Subcarpetas:
+- videos
+- thumbnails
+- hooks
+- scripts
+- images
+- winners
+
+
+Permitir:
+- subir archivos
+- reemplazar archivos
+- eliminar archivos
+- copiar URL
+- preview
+
+
+━━━━━━━━━━━━━━━━━━━
+6. ESTADOS CREATIVOS
+━━━━━━━━━━━━━━━━━━━
+
+
+Agregar estados:
+
+
+🟢 Winner
+🟡 Testing
+🔵 Producción
+⚫ Archivado
+🔴 Dead
+
+
+━━━━━━━━━━━━━━━━━━━
+7. SCORE CREATIVO
+━━━━━━━━━━━━━━━━━━━
+
+
+Cada creativo debe tener:
+
+
+- CTR
+- CPC
+- CPA
+- Hook Rate
+- Thumb Stop Rate
+- Estado
+
+
+Aunque inicialmente sean manuales.
+
+
+━━━━━━━━━━━━━━━━━━━
+8. CONEXIÓN CON META OPS
+━━━━━━━━━━━━━━━━━━━
+
+
+Creative Lab NO ejecuta campañas.
+
+
+Creative Lab produce activos creativos.
+
+
+Meta Ops consume esos activos.
+
+
+Flujo correcto:
+
+
+Creative Lab
+   ↓
+Meta Ops
+   ↓
+Metrics
+
+
+━━━━━━━━━━━━━━━━━━━
+9. BOTONES OPERATIVOS
+━━━━━━━━━━━━━━━━━━━
+
+
+Cada creativo debe tener:
+
+
+- Ver
+- Editar
+- Duplicar
+- Generar variantes IA
+- Mover a Winners
+- Archivar
+- Copiar Copy
+- Copiar Hook
+- Abrir Assets
+
+
+━━━━━━━━━━━━━━━━━━━
+10. BIBLIOTECA DE WINNERS
+━━━━━━━━━━━━━━━━━━━
+
+
+Crear sección:
+🔥 Winners
+
+
+Objetivo:
+guardar creativos ganadores reutilizables.
+
+
+Permitir:
+- clonar
+- adaptar
+- reutilizar estructura
+- reutilizar hooks
+- reutilizar CTA
+
+
+━━━━━━━━━━━━━━━━━━━
+11. FILOSOFÍA DEL SISTEMA
+━━━━━━━━━━━━━━━━━━━
+
+
+NO convertir esto en:
+- editor de video complejo
+- Canva interno
+- suite enterprise
+
+
+Priorizar:
+- rapidez
+- claridad operacional
+- producción rápida
+- testeo rápido
+- reutilización
+- velocidad creativa
+
+
+Creative Lab debe comportarse como:
+“Laboratorio de Descubrimiento Creativo”
+NO como una galería de anuncios.
+
+
+
+
+
+
+META OPS — EVOLUCIÓN A “CREATIVE INTELLIGENCE SYSTEM”
+
+
+Contexto Operacional
+
+
+Ingenio OS NO opera como agencia tradicional.
+El foco NO está en campañas.
+El foco está en detectar creativos ganadores rápido para escalar productos low-ticket.
+
+
+La operativa real actual funciona así:
+
+
+Creativo → Señales → Winner → Escalar
+
+
+Meta Ads solo distribuye tráfico.
+El activo principal son:
+- hooks
+- anuncios
+- creativos
+- señales tempranas
+
+
+Existe actualmente un panel avanzado creado previamente en:
+C:\Users\Compumar\Google Atigravity\dashboard-meta-ads\dashboard
+
+
+Ese dashboard contiene una lógica operacional MUCHO más alineada con el modelo real del negocio:
+- radar de operaciones
+- sistema de score
+- señales tempranas
+- estado IA
+- fatiga
+- recomendaciones
+- foco en anuncios
+
+
+NO copiar visualmente solamente.
+La misión es MIGRAR LA LÓGICA OPERATIVA hacia Ingenio OS.
+
+
+OBJETIVO
+
+
+Convertir Meta Ops + Métricas en un verdadero:
+“Creative Intelligence System”.
+
+
+El sistema debe ayudar a:
+- detectar winners
+- apagar perdedores
+- reducir fatiga decisional
+- asistir escalado
+- operar múltiples productos simultáneamente
+
+
+SIN pensamiento enterprise.
+SIN dashboards corporativos innecesarios.
+
+
+=================================================================
+ARQUITECTURA NUEVA
+=================================================================
+
+
+NO reemplazar MetricsModule actual.
+
+
+Separar en 3 niveles:
+
+
+1. MÉTRICAS (Vista Ejecutiva)
+2. META OPS (Infraestructura Meta)
+3. CREATIVE RADAR (Nueva Consola Operativa)
+
+
+=================================================================
+1. METRICS MODULE (Mantener)
+=================================================================
+
+
+Debe seguir funcionando como:
+Vista financiera global del ecosistema.
+
+
+Mostrar:
+- MRR global
+- inversión total
+- ROAS promedio
+- salud financiera
+- estado de productos
+- crecimiento mensual
+
+
+NO colocar aquí:
+- creativos
+- hooks
+- anuncios individuales
+
+
+Esta vista es SOLO ejecutiva.
+
+
+=================================================================
+2. META OPS (REORGANIZAR)
+=================================================================
+
+
+Meta Ops debe convertirse en:
+centro técnico de conexión Meta.
+
+
+Debe enfocarse en:
+- conexión API
+- cuentas publicitarias
+- sincronización
+- campañas
+- conjuntos
+- errores API
+- estado de tokens
+- status de cuentas
+
+
+NO mezclar aquí:
+- análisis creativo profundo
+- score
+- IA decisional
+
+
+Agregar:
+- selector de cuenta publicitaria
+- selector de producto
+- estado de sincronización real
+- última actualización
+- refresh manual
+
+
+=================================================================
+3. NUEVO MÓDULO — CREATIVE RADAR
+=================================================================
+
+
+Crear un nuevo módulo operacional inspirado en:
+
+
+C:\Users\Compumar\Google Atigravity\dashboard-meta-ads\dashboard
+
+
+Este será el verdadero centro de decisiones.
+
+
+=================================================================
+OBJETIVO DEL CREATIVE RADAR
+=================================================================
+
+
+Analizar anuncios y creativos individuales.
+
+
+NO campañas.
+
+
+El sistema debe pensar:
+“¿Qué creativo merece más dinero?”
+
+
+NO:
+“¿Qué campaña tiene mejor ROAS?”
+
+
+=================================================================
+ESTRUCTURA DEL CREATIVE RADAR
+=================================================================
+
+
+Top KPIs:
+- gasto hoy
+- ventas hoy
+- ROAS hoy
+- CPA hoy
+- winners activos
+- creativos fatigados
+
+
+=================================================================
+SISTEMA DE ESTADOS
+=================================================================
+
+
+Cada creativo debe tener un estado IA:
+
+
+🟢 ESCALAR
+🟡 OBSERVAR
+🔴 APAGAR
+🟣 FATIGA
+⚪ SIN_DATA
+
+
+=================================================================
+TABLA CENTRAL — RADAR OPERACIONAL
+=================================================================
+
+
+Columnas:
+
+
+- creativo
+- hook
+- producto
+- plataforma
+- estado IA
+- score
+- fase
+- CTR
+- CPC
+- CPA
+- ROAS
+- frecuencia
+- gasto
+- compras
+- early signals
+- late signals
+- acción recomendada
+
+
+=================================================================
+SCORE SYSTEM
+=================================================================
+
+
+Crear sistema de score automático basado en:
+
+
+- CTR
+- CPC
+- CPA
+- ROAS
+- frecuencia
+- tiempo activo
+- compras
+- tendencia
+- hook performance
+
+
+Resultado:
+score 0–100.
+
+
+=================================================================
+EARLY SIGNALS
+=================================================================
+
+
+MUY IMPORTANTE.
+
+
+Como el sistema opera con presupuestos pequeños,
+el radar debe detectar señales tempranas:
+
+
+Ejemplos:
+- CTR alto
+- CPC bajo
+- hook fuerte
+- scroll stop bueno
+
+
+Aunque todavía no haya compras.
+
+
+=================================================================
+ACCIONES RÁPIDAS
+=================================================================
+
+
+Preparar botones para:
+- apagar anuncio
+- duplicar anuncio
+- marcar winner
+- mover a escalado
+- marcar fatiga
+- enviar a observación
+
+
+Aunque inicialmente sean mock.
+
+
+=================================================================
+FATIGA
+=================================================================
+
+
+Detectar:
+- frecuencia alta
+- caída CTR
+- aumento CPC
+- caída ROAS
+
+
+Mostrar alertas visuales.
+
+
+=================================================================
+IA OPERACIONAL (MUY IMPORTANTE)
+=================================================================
+
+
+Preparar arquitectura para agentes IA futuros.
+
+
+Los agentes NO deben ejecutar campañas automáticamente.
+
+
+Su función será:
+- interpretar señales
+- recomendar decisiones
+- reducir fatiga mental
+
+
+Ejemplos:
+
+
+“CTR excelente. Esperar más data antes de apagar.”
+
+
+“Frecuencia alta detectada. Posible fatiga creativa.”
+
+
+“CPA empeorando 38%. Revisar hook.”
+
+
+=================================================================
+ESTRUCTURA POR PRODUCTO
+=================================================================
+
+
+Todo debe organizarse por producto.
+
+
+Ejemplo:
+
+
+VerdePro
+ ├── campañas
+ ├── conjuntos
+ ├── creativos
+ ├── hooks
+ ├── winners
+ └── historial
+
+
+=================================================================
+IMPORTANTE
+=================================================================
+
+
+NO construir:
+- dashboard corporativo
+- BI enterprise
+- panel financiero complejo
+
+
+SÍ construir:
+- consola de media buying
+- sistema de detección de winners
+- radar de decisiones rápidas
+
+
+Ingenio OS debe pensar como:
+“fábrica de productos validables”.
+
+
+NO como:
+“empresa enterprise SaaS”.
+
+
+=================================================================
+OBJETIVO FINAL
+=================================================================
+
+
+Reducir:
+- caos operacional
+- ansiedad al escalar
+- fatiga decisional
+
+
+Y ayudar a:
+- lanzar rápido
+- detectar winners rápido
+- apagar perdedores rápido
+- escalar productos rápidamente
+
+
+
+
+
+
+AGENTES IA — IMPLEMENTACIÓN REAL OPERATIVA (FASE 1)
+
+
+Contexto
+
+
+Actualmente el módulo “Agentes IA” de Ingenio OS es solamente visual/mock.
+La misión ahora es convertirlo en un sistema semi-funcional y operacional REAL.
+
+
+IMPORTANTE:
+NO construir automatizaciones complejas todavía.
+NO construir agentes autónomos completos.
+NO sobreingeniería.
+
+
+Objetivo:
+crear la PRIMERA capa funcional de agentes IA útiles para operación diaria.
+
+
+=================================================================
+VISIÓN REAL DEL SISTEMA
+=================================================================
+
+
+Ingenio OS NO debe pensar como:
+- empresa enterprise
+- plataforma corporativa
+- IA futurista
+
+
+Debe pensar como:
+“copiloto operacional para lanzar y escalar productos rápidamente”.
+
+
+=================================================================
+ARQUITECTURA BASE
+=================================================================
+
+
+Ingenio OS (UI)
+↓
+n8n (orquestador)
+↓
+OpenRouter (modelos IA)
+↓
+Supabase (memoria y métricas)
+
+
+=================================================================
+OBJETIVO DE ESTA FASE
+=================================================================
+
+
+Construir agentes SEMI-MANUALES.
+
+
+Flujo correcto:
+
+
+Usuario hace click
+↓
+n8n ejecuta workflow
+↓
+IA analiza
+↓
+Ingenio OS recibe respuesta
+↓
+Mostrar recomendación
+
+
+NO ejecutar acciones automáticas todavía.
+
+
+=================================================================
+PRIORIDAD #1 — IA DE MÉTRICAS
+=================================================================
+
+
+Este será el primer agente REAL.
+
+
+Es el más importante porque resuelve:
+- fatiga decisional
+- análisis de anuncios
+- detección de winners
+- detección de fatiga
+- señales tempranas
+
+
+=================================================================
+COMPORTAMIENTO DEL AGENTE
+=================================================================
+
+
+INPUT:
+- CTR
+- CPC
+- CPA
+- ROAS
+- Frecuencia
+- Spend
+- Compras
+- Tiempo activo
+- Hook
+- Nombre creativo
+
+
+OUTPUT:
+- ESCALAR
+- OBSERVAR
+- APAGAR
+- FATIGA
+- SIN_DATA
+
+
++ explicación corta y operacional.
+
+
+Ejemplo:
+
+
+“CTR fuerte y CPC saludable.
+Esperar más data antes de apagar.”
+
+
+=================================================================
+IMPLEMENTACIÓN TÉCNICA
+=================================================================
+
+
+=================================================================
+1. OPENROUTER
+=================================================================
+
+
+Preparar integración completa con OpenRouter.
+
+
+Crear:
+- API Key env variable
+- helper de requests IA
+- provider centralizado
+
+
+Variables:
+OPENROUTER_API_KEY
+OPENROUTER_MODEL
+
+
+Usar inicialmente:
+deepseek-chat
+o
+qwen/qwen3-32b
+
+
+Priorizar:
+- velocidad
+- costo bajo
+- razonamiento operativo
+
+
+=================================================================
+2. N8N
+=================================================================
+
+
+Crear workflow:
+metrics-analysis-agent
+
+
+Flujo:
+
+
+Webhook recibe métricas
+↓
+Formatear contexto
+↓
+Enviar a OpenRouter
+↓
+Recibir respuesta IA
+↓
+Guardar resultado en Supabase
+↓
+Retornar análisis a Ingenio OS
+
+
+=================================================================
+3. SUPABASE
+=================================================================
+
+
+Crear tabla:
+
+
+ai_analysis
+
+
+Campos:
+- id
+- product
+- creative
+- metrics_json
+- ai_status
+- ai_reason
+- created_at
+
+
+=================================================================
+4. INGENIO OS
+=================================================================
+
+
+Actualizar módulo:
+Agentes IA
+
+
+Hacer funcional SOLO:
+“IA de métricas”
+
+
+=================================================================
+NUEVA UI NECESARIA
+=================================================================
+
+
+Agregar:
+- botón “Analizar Creativos”
+- estado de ejecución
+- último análisis
+- historial básico
+- respuesta IA visual
+
+
+=================================================================
+EJEMPLO VISUAL
+=================================================================
+
+
+🟢 ESCALAR
+“CTR excelente y ROAS saludable.
+Duplicar creativo y probar nuevo ángulo.”
+
+
+🔴 APAGAR
+“CTR bajo y CPC elevado.
+Hook probablemente débil.”
+
+
+🟣 FATIGA
+“Frecuencia elevada detectada.
+Caída de CTR progresiva.”
+
+
+=================================================================
+IMPORTANTE
+=================================================================
+
+
+El agente NO toma decisiones automáticas.
+
+
+NO:
+- pausa campañas
+- cambia presupuestos
+- duplica anuncios
+
+
+SOLO:
+- analiza
+- interpreta
+- recomienda
+
+
+El operador humano mantiene el control.
+
+
+=================================================================
+ESTRUCTURA FUTURA (PREPARAR)
+=================================================================
+
+
+Agentes futuros:
+- Research IA
+- Copy IA
+- Landing IA
+- Support IA
+
+
+Pero NO implementarlos todavía.
+
+
+Solo preparar arquitectura reutilizable:
+- providers
+- workflows
+- prompts
+- logs
+- respuestas
+
+
+=================================================================
+COMPORTAMIENTO DEL SISTEMA
+=================================================================
+
+
+Ingenio OS debe comportarse como:
+“copiloto operacional”.
+
+
+NO como:
+“robot autónomo”.
+
+
+=================================================================
+OBJETIVO FINAL
+=================================================================
+
+
+Reducir:
+- caos mental
+- ansiedad operacional
+- malas decisiones emocionales
+
+
+Y ayudar a:
+- detectar winners
+- apagar perdedores
+- interpretar señales
+- escalar más rápido

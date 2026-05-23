@@ -79,8 +79,15 @@ export function ProductFactoryModule() {
                 </div>
               </div>
 
-              <h3 className="font-bold text-2xl mb-1 text-white">{product.name}</h3>
-              <p className="text-zinc-500 text-sm mb-4 capitalize">{product.type}</p>
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="font-bold text-2xl mb-1 text-white">{product.name}</h3>
+                  <p className="text-zinc-500 text-sm capitalize">{product.type}</p>
+                </div>
+                <a href={`/os/product/${product.slug}`} className="bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-cyan-500/20">
+                  Abrir HQ →
+                </a>
+              </div>
               
               <div className="grid grid-cols-2 gap-3 mb-6 bg-zinc-950 p-4 rounded-xl border border-zinc-800">
                 <div>
@@ -98,6 +105,12 @@ export function ProductFactoryModule() {
               <div className="mt-auto pt-4 border-t border-zinc-800">
                 <div className="text-xs font-semibold text-zinc-500 mb-3">ENLACES RÁPIDOS</div>
                 <div className="flex gap-2 flex-wrap">
+                  <a href={`/os/creative/${product.slug}`} className="text-xs px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20 transition-colors font-semibold">
+                    Creative Lab 🎨
+                  </a>
+                  <a href={`/os/radar/${product.slug}`} className="text-xs px-3 py-1.5 rounded-lg bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 border border-yellow-500/20 transition-colors font-semibold">
+                    Creative Radar 📡
+                  </a>
                   {product.sections?.map((section) => (
                     <a
                       key={section}
