@@ -25,7 +25,7 @@ const getSafePath = (slug: string, type: 'legacy' | 'projects' | 'assets', relat
 export async function getFileTree(slug: string) {
   const tree: any[] = [];
 
-  const buildTree = (dirPath: string, parentPath: string, type: string) => {
+  const buildTree = (dirPath: string, parentPath: string, type: string): any[] => {
     if (!fs.existsSync(dirPath)) return [];
     const items = fs.readdirSync(dirPath);
     return items.map(item => {

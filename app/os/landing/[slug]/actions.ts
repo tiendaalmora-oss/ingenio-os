@@ -76,7 +76,8 @@ export async function addVariant(slug: string, name: string, type: string) {
 export async function updateVariantConfig(id: string, slug: string, config: any) {
   // Primero obtener config actual para no pisar el 'folder'
   const { data: variant } = await supabase.from('landing_variants').select('config').eq('id', id).single();
-  const newConfig = { ...variant.config, ...config };
+  const existingConfig = variant?.config || {};
+  const newConfig = { ...existingConfig, ...config };
   
   await supabase.from('landing_variants').update({ config: newConfig }).eq('id', id);
   await logEvent('landing_variant_updated', slug, { variant_id: id });

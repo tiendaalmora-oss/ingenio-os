@@ -109,7 +109,7 @@ export default function CreativeRadarClient({ slug, product }: { slug: string, p
 
   return (
     <main className="bg-zinc-950 text-white min-h-screen flex overflow-hidden">
-      <Sidebar activeModule={"creative_radar"} onSelect={handleSidebarSelect} />
+      <Sidebar activeModule={"creative_radar" as any} onSelect={handleSidebarSelect} />
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden bg-black">
         <TopBar title={`Creative Radar 📡 : ${product?.name || slug}`} />
