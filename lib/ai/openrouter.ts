@@ -47,12 +47,20 @@ export async function askMetricsAgent(systemPrompt: string, userPrompt: string):
 
   try {
     const parsed = JSON.parse(content);
+    
+    // Helper to ensure we always get a string for React rendering to avoid crashes
+    const safeString = (val: any, fallback: string) => {
+      if (!val) return fallback;
+      if (typeof val === 'string') return val;
+      return JSON.stringify(val);
+    };
+
     return {
       status: parsed.status || 'OBSERVAR',
-      diagnosis: parsed.diagnosis || parsed.diagnostico || 'No diagnosis provided',
-      risk: parsed.risk || parsed.riesgo || 'No risk provided',
-      action: parsed.action || parsed.accion || 'No action provided',
-      confidence: parsed.confidence || parsed.confianza || 0,
+      diagnosis: safeString(parsed.diagnosis || parsed.diagnostico, 'No diagnosis provided'),
+      risk: safeString(parsed.risk || parsed.riesgo, 'No risk provided'),
+      action: safeString(parsed.action || parsed.accion, 'No action provided'),
+      confidence: typeof (parsed.confidence || parsed.confianza) === 'number' ? (parsed.confidence || parsed.confianza) : parseInt(parsed.confidence || parsed.confianza || '0') || 0,
     };
   } catch (e) {
     console.error("Error parsing AI JSON:", content);
