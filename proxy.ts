@@ -19,7 +19,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /** Root domains that are treated as the main app (no subdomain routing) */
-const ROOT_DOMAINS = ["os.ingeniodigital.shop", "ingeniodigital.shop", "localhost"];
+const ROOT_DOMAINS = ["os.ingeniodigital.shop", "oferta.ingeniodigital.shop", "ingeniodigital.shop", "localhost"];
 
 /** Sections that can be used as a subdomain prefix (before the project) */
 const SECTION_PREFIXES = ["demo", "manual", "app"];
@@ -61,6 +61,11 @@ export function proxy(request: NextRequest) {
     // ---- PASSWORD PROTECTION (Dashboard only) ----
     // Only protect dashboard routes starting with /os
     if (pathname.startsWith("/os")) {
+      // Si el cliente intenta entrar al OS por el dominio público de ofertas, lo bloqueamos
+      if (hostname === "oferta.ingeniodigital.shop") {
+        return new NextResponse("Not Found", { status: 404 });
+      }
+
       const correctPassword = process.env.DASHBOARD_PASSWORD || "ingenio2026";
       const sessionCookie = request.cookies.get("ingenio_session");
 
