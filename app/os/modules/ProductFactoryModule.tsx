@@ -26,6 +26,8 @@ interface Idea {
   avatar?: string;
   offer?: string;
   product_description?: string;
+  branding?: any;
+  creative_brief?: any;
   status: string;
   created_at: string;
 }
@@ -56,6 +58,19 @@ export function ProductFactoryModule() {
   const [ideaDesires, setIdeaDesires] = useState(""); // comma separated
   const [ideaOffer, setIdeaOffer] = useState("");
   const [ideaProdDesc, setIdeaProdDesc] = useState("");
+
+  // Creative Engine Inputs
+  const [ideaBrandingStyle, setIdeaBrandingStyle] = useState("");
+  const [ideaBrandingColors, setIdeaBrandingColors] = useState<any>({});
+  const [ideaPrimaryColor, setIdeaPrimaryColor] = useState("#10b981");
+  const [ideaBgColor, setIdeaBgColor] = useState("#081008");
+  const [ideaTextColor, setIdeaTextColor] = useState("#f3f4f6");
+  const [ideaTitleFont, setIdeaTitleFont] = useState("Outfit");
+  const [ideaBodyFont, setIdeaBodyFont] = useState("Inter");
+  const [ideaFontsUrl, setIdeaFontsUrl] = useState("");
+  const [ideaBriefSlang, setIdeaBriefSlang] = useState("");
+  const [ideaBriefHook, setIdeaBriefHook] = useState("");
+  const [ideaBriefSophistication, setIdeaBriefSophistication] = useState(3);
 
   const [aiProfiling, setAiProfiling] = useState(false);
   const [approvingIdea, setApprovingIdea] = useState(false);
@@ -167,6 +182,17 @@ export function ProductFactoryModule() {
     setIdeaOffer("");
     setIdeaProdDesc("");
     setCheckoutUrl("");
+    setIdeaBrandingStyle("");
+    setIdeaBrandingColors({});
+    setIdeaPrimaryColor("#10b981");
+    setIdeaBgColor("#081008");
+    setIdeaTextColor("#f3f4f6");
+    setIdeaTitleFont("Outfit");
+    setIdeaBodyFont("Inter");
+    setIdeaFontsUrl("");
+    setIdeaBriefSlang("");
+    setIdeaBriefHook("");
+    setIdeaBriefSophistication(3);
     setIsModalOpen(true);
   };
 
@@ -181,6 +207,19 @@ export function ProductFactoryModule() {
     setIdeaOffer(idea.offer || "");
     setIdeaProdDesc(idea.product_description || "");
     setCheckoutUrl(""); // Se pide solo al momento de aprobar
+    const branding = idea.branding || {};
+    const brief = idea.creative_brief || {};
+    setIdeaBrandingStyle(branding.style_concept || "");
+    setIdeaBrandingColors(branding.colors || {});
+    setIdeaPrimaryColor(branding.colors?.primary || "#10b981");
+    setIdeaBgColor(branding.colors?.bg || "#081008");
+    setIdeaTextColor(branding.colors?.text || "#f3f4f6");
+    setIdeaTitleFont(branding.fonts?.title_font || "Outfit");
+    setIdeaBodyFont(branding.fonts?.body_font || "Inter");
+    setIdeaFontsUrl(branding.google_fonts_url || "");
+    setIdeaBriefSlang((brief.slang || []).join(", "));
+    setIdeaBriefHook(brief.emotional_hook_angle || "");
+    setIdeaBriefSophistication(brief.buyer_sophistication || 3);
     setIsModalOpen(true);
   };
 
@@ -207,6 +246,20 @@ export function ProductFactoryModule() {
       setIdeaProdDesc(p.product_description || "");
       if (p.pain_points) setIdeaPainPoints(p.pain_points.join(", "));
       if (p.desires) setIdeaDesires(p.desires.join(", "));
+      
+      const branding = p.branding || {};
+      const brief = p.creative_brief || {};
+      setIdeaBrandingStyle(branding.style_concept || "");
+      setIdeaBrandingColors(branding.colors || {});
+      setIdeaPrimaryColor(branding.colors?.primary || "#10b981");
+      setIdeaBgColor(branding.colors?.bg || "#081008");
+      setIdeaTextColor(branding.colors?.text || "#f3f4f6");
+      setIdeaTitleFont(branding.fonts?.title_font || "Outfit");
+      setIdeaBodyFont(branding.fonts?.body_font || "Inter");
+      setIdeaFontsUrl(branding.google_fonts_url || "");
+      if (brief.slang) setIdeaBriefSlang(brief.slang.join(", "));
+      setIdeaBriefHook(brief.emotional_hook_angle || "");
+      setIdeaBriefSophistication(brief.buyer_sophistication || 3);
     } catch (err: any) {
       alert("Error en el perfilado con IA: " + err.message);
     } finally {
@@ -242,6 +295,25 @@ export function ProductFactoryModule() {
         avatar: ideaAvatar,
         offer: ideaOffer,
         product_description: ideaProdDesc,
+        branding: {
+          style_concept: ideaBrandingStyle,
+          colors: {
+            ...ideaBrandingColors,
+            bg: ideaBgColor,
+            primary: ideaPrimaryColor,
+            text: ideaTextColor
+          },
+          fonts: {
+            title_font: ideaTitleFont,
+            body_font: ideaBodyFont
+          },
+          google_fonts_url: ideaFontsUrl
+        },
+        creative_brief: {
+          slang: ideaBriefSlang.split(",").map(s => s.trim()).filter(Boolean),
+          emotional_hook_angle: ideaBriefHook,
+          buyer_sophistication: ideaBriefSophistication
+        },
         status: "idea"
       };
 
@@ -717,6 +789,139 @@ export function ProductFactoryModule() {
                       placeholder="Qué es lo que realmente se entrega al comprar..."
                       className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-300 outline-none focus:border-cyan-500 min-h-[65px] resize-y"
                     />
+                  </div>
+
+                  {/* BRANDING SECTION */}
+                  <div className="border-t border-zinc-850 pt-4 mt-6">
+                    <h4 className="text-xs font-extrabold text-cyan-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                      <span>🎨</span> Branding y Estética Sugerida
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <label className="text-xs font-bold text-zinc-400 mb-1 block uppercase tracking-wider">Concepto de Estilo Visual</label>
+                        <input 
+                          type="text" 
+                          value={ideaBrandingStyle}
+                          onChange={e => setIdeaBrandingStyle(e.target.value)}
+                          placeholder="Ej: SaaS Premium Dark Mode o Warm Maternity Pastel"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 mb-1 block uppercase tracking-wider">Color Principal</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="color" 
+                            value={ideaPrimaryColor}
+                            onChange={e => setIdeaPrimaryColor(e.target.value)}
+                            className="bg-zinc-900 border border-zinc-800 rounded h-10 w-12 cursor-pointer p-1"
+                          />
+                          <input 
+                            type="text" 
+                            value={ideaPrimaryColor}
+                            onChange={e => setIdeaPrimaryColor(e.target.value)}
+                            className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 text-xs text-white outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 mb-1 block uppercase tracking-wider">Color de Fondo</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="color" 
+                            value={ideaBgColor}
+                            onChange={e => setIdeaBgColor(e.target.value)}
+                            className="bg-zinc-900 border border-zinc-800 rounded h-10 w-12 cursor-pointer p-1"
+                          />
+                          <input 
+                            type="text" 
+                            value={ideaBgColor}
+                            onChange={e => setIdeaBgColor(e.target.value)}
+                            className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 text-xs text-white outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 mb-1 block uppercase tracking-wider">Tipografía Título</label>
+                        <input 
+                          type="text" 
+                          value={ideaTitleFont}
+                          onChange={e => setIdeaTitleFont(e.target.value)}
+                          placeholder="Outfit, Space Grotesque"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-cyan-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 mb-1 block uppercase tracking-wider">Tipografía Cuerpo</label>
+                        <input 
+                          type="text" 
+                          value={ideaBodyFont}
+                          onChange={e => setIdeaBodyFont(e.target.value)}
+                          placeholder="Inter, Plus Jakarta Sans"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-cyan-500"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <label className="text-xs font-bold text-zinc-400 mb-1 block uppercase tracking-wider">Google Fonts Import URL</label>
+                        <input 
+                          type="text" 
+                          value={ideaFontsUrl}
+                          onChange={e => setIdeaFontsUrl(e.target.value)}
+                          placeholder="https://fonts.googleapis.com/css2?family=..."
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-cyan-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CREATIVE BRIEF SECTION */}
+                  <div className="border-t border-zinc-850 pt-4 mt-6">
+                    <h4 className="text-xs font-extrabold text-cyan-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                      <span>🧠</span> Ficha de Investigación (Brief)
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-zinc-400 mb-1 block uppercase tracking-wider">Modismos y Expresiones del Nicho (Separadas por coma)</label>
+                        <input 
+                          type="text" 
+                          value={ideaBriefSlang}
+                          onChange={e => setIdeaBriefSlang(e.target.value)}
+                          placeholder="Ej: libreta, fiado, stock de mercadería"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="col-span-2">
+                          <label className="text-xs font-bold text-zinc-400 mb-1 block uppercase tracking-wider">Ángulo Emocional Dominante</label>
+                          <input 
+                            type="text" 
+                            value={ideaBriefHook}
+                            onChange={e => setIdeaBriefHook(e.target.value)}
+                            placeholder="Ej: Frustración por vivir apagando incendios"
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-cyan-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-zinc-400 mb-1 block uppercase tracking-wider">Sofisticación (1-5)</label>
+                          <input 
+                            type="number" 
+                            min="1" 
+                            max="5"
+                            value={ideaBriefSophistication}
+                            onChange={e => setIdeaBriefSophistication(isNaN(parseInt(e.target.value)) ? 3 : parseInt(e.target.value))}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-cyan-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div>

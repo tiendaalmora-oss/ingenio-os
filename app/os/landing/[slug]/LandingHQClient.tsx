@@ -16,7 +16,16 @@ import { getFileTree, readFileContent, saveFileContent } from "./codeActions";
 export default function LandingHQClient({ slug, initialData }: { slug: string, initialData: any }) {
   const { product: initialProduct, variants } = initialData;
   
-  const [activeTab, setActiveTab] = useState<"variantes" | "assets" | "codigo" | "ficha" | "manual" | "plantilla">("variantes");
+  const [activeTab, setActiveTab] = useState<"variantes" | "editor_ia" | "assets" | "codigo" | "ficha" | "manual" | "plantilla">("editor_ia");
+  
+  // States: AI Creative Editor
+  const [selectedVariantForAI, setSelectedVariantForAI] = useState("landing");
+  const [aiLandingChat, setAiLandingChat] = useState<{role: "user" | "assistant", text: string}[]>([
+    { role: "assistant", text: "¡Hola! Soy tu Director Creativo IA. Pídeme cambios de diseño o de copy para este producto. Escribe tu instrucción o usa uno de los presets rápidos de abajo." }
+  ]);
+  const [aiLandingProcessing, setAiLandingProcessing] = useState(false);
+  const [aiLandingInstruction, setAiLandingInstruction] = useState("");
+  const [iframeVersion, setIframeVersion] = useState(0);
   
   // Product state
   const [product, setProduct] = useState(initialProduct);
@@ -115,6 +124,38 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
     }
   };
 
+  const handleAiLandingModify = async (instructionText?: string) => {
+    const text = instructionText || aiLandingInstruction;
+    if (!text.trim()) return;
+
+    setAiLandingChat(prev => [...prev, { role: "user", text }]);
+    if (!instructionText) setAiLandingInstruction("");
+    setAiLandingProcessing(true);
+
+    try {
+      const filePath = `${selectedVariantForAI}/index.html`;
+      const currentHtml = await readFileContent(slug, 'legacy', filePath);
+      
+      const res = await fetch("/api/ai/edit-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: currentHtml, instruction: text })
+      });
+      
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      await saveFileContent(slug, 'legacy', filePath, data.newCode);
+      
+      setAiLandingChat(prev => [...prev, { role: "assistant", text: "✨ ¡Diseño reestructurado con IA y publicado! El iframe de la derecha se ha actualizado con tus cambios." }]);
+      setIframeVersion(prev => prev + 1);
+    } catch (err: any) {
+      setAiLandingChat(prev => [...prev, { role: "assistant", text: "❌ Error de IA al aplicar cambios: " + err.message }]);
+    } finally {
+      setAiLandingProcessing(false);
+    }
+  };
+
   // Save product details (Ficha)
   const handleSaveDetails = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,6 +215,7 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
         <div className="flex items-center gap-6 px-6 pt-4 border-b border-zinc-800 bg-zinc-950 overflow-x-auto flex-shrink-0">
           {[
             { id: "variantes", label: "📄 Variantes" },
+            { id: "editor_ia", label: "💬 Editor Creativo IA" },
             { id: "ficha", label: "📦 Ficha de Producto" },
             { id: "manual", label: "📖 Manual de Usuario" },
             { id: "plantilla", label: "🏆 Plantilla Ganadora" },
@@ -197,6 +239,157 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
 
         <div className="flex-1 overflow-y-auto p-6 bg-zinc-950/50">
           
+          {/* TAB: EDITOR CREATIVO IA */}
+          {activeTab === "editor_ia" && (
+            <div className="grid grid-cols-5 gap-6 h-[calc(100vh-230px)] overflow-hidden">
+              {/* Left Column: AI Assistant (2 cols) */}
+              <div className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col justify-between overflow-hidden h-full">
+                
+                {/* Header */}
+                <div className="bg-zinc-950 p-4 border-b border-zinc-800 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-cyan-400 flex items-center gap-1.5">
+                      <span>🤖</span> Director Creativo IA
+                    </h3>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">Modelado de diseño y copies en tiempo real</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase">Variante:</span>
+                    <select 
+                      value={selectedVariantForAI} 
+                      onChange={e => {
+                        setSelectedVariantForAI(e.target.value);
+                        setIframeVersion(prev => prev + 1);
+                      }}
+                      className="bg-black border border-zinc-800 text-xs rounded px-2 py-1 text-zinc-300 outline-none"
+                    >
+                      <option value="landing">Principal (landing)</option>
+                      {variants?.filter((v: any) => !v.is_main).map((v: any) => (
+                        <option key={v.id} value={v.config?.folder}>{v.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Chat Message Box */}
+                <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-zinc-900/30 flex flex-col">
+                  {aiLandingChat.map((msg, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`flex flex-col max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${
+                        msg.role === "user" 
+                          ? "bg-cyan-600 text-white ml-auto rounded-tr-none" 
+                          : "bg-zinc-950 border border-zinc-850 text-zinc-300 mr-auto rounded-tl-none"
+                      }`}
+                    >
+                      <div className="font-bold text-[9px] uppercase tracking-wider text-zinc-500 mb-1">
+                        {msg.role === "user" ? "Tú" : "IA Creativa"}
+                      </div>
+                      <p>{msg.text}</p>
+                    </div>
+                  ))}
+                  {aiLandingProcessing && (
+                    <div className="bg-zinc-950 border border-zinc-850 text-zinc-300 mr-auto rounded-tl-none rounded-2xl p-3 text-xs flex items-center gap-2 max-w-[85%]">
+                      <span className="w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></span>
+                      <span className="text-zinc-500">Diseñando y reescribiendo la landing... (suele demorar de 15 a 30 segundos)</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Panel (Presets & Input) */}
+                <div className="p-4 bg-zinc-950 border-t border-zinc-800 space-y-4">
+                  {/* Presets Grid */}
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest block">Estilos Rápidos</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button 
+                        onClick={() => handleAiLandingModify("Convertir el diseño de la landing al estilo Apple (Fondo blanco o gris muy claro #f5f5f7, tipografías elegantes finas, bordes redondeados limpios, layout amplio con márgenes limpios, textos de color oscuro #1d1d1f y botones negros con texto blanco).")}
+                        disabled={aiLandingProcessing}
+                        className="text-[10px] bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white py-1.5 px-2 rounded-lg font-medium transition-all text-left flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        🍎 Estilo Apple
+                      </button>
+                      <button 
+                        onClick={() => handleAiLandingModify("Convertir la landing a estilo SaaS Premium (Tema oscuro, fondo muy oscuro #0A0F1D, tarjetas y secciones con fondos #151D30 y bordes muy finos brillantes con sombras neón cian y morado, botones con gradientes cian a azul y texto blanco, tipografía geométrica moderna).")}
+                        disabled={aiLandingProcessing}
+                        className="text-[10px] bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white py-1.5 px-2 rounded-lg font-medium transition-all text-left flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        💻 SaaS Premium
+                      </button>
+                      <button 
+                        onClick={() => handleAiLandingModify("Reescribir por completo la propuesta de valor, los beneficios y los dolores usando un tono extremadamente agresivo, persuasivo y comercial. Usa modismos urgentes, palabras de impacto emocional fuerte y acelera la urgencia en los llamados a la acción.")}
+                        disabled={aiLandingProcessing}
+                        className="text-[10px] bg-zinc-900 hover:bg-zinc-855 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white py-1.5 px-2 rounded-lg font-medium transition-all text-left flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        ⚡ Copy Comercial
+                      </button>
+                      <button 
+                        onClick={() => handleAiLandingModify("Cambiar el diseño a una estética cálida y amigable. Usa colores pastel (fondo crema suave #FDFBF7, tarjetas blancas, detalles en rosa viejo, lila o verde oliva), tipografía redondeada dulce, bordes de tarjetas muy redondeados (rounded-3xl) y botones muy circulares y tiernos.")}
+                        disabled={aiLandingProcessing}
+                        className="text-[10px] bg-zinc-900 hover:bg-zinc-855 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white py-1.5 px-2 rounded-lg font-medium transition-all text-left flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        🌸 Estilo Cálido Pastel
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Input Form */}
+                  <div className="flex gap-2">
+                    <input 
+                      type="text"
+                      value={aiLandingInstruction}
+                      onChange={e => setAiLandingInstruction(e.target.value)}
+                      placeholder="Ej: cambiá el color principal a rojo y hacé las tarjetas redondeadas..."
+                      disabled={aiLandingProcessing}
+                      onKeyDown={e => { if (e.key === "Enter") handleAiLandingModify(); }}
+                      className="flex-1 bg-black border border-zinc-800 text-xs rounded-xl px-4 py-3 outline-none focus:border-cyan-500 text-zinc-300 disabled:opacity-50"
+                    />
+                    <button 
+                      onClick={() => handleAiLandingModify()}
+                      disabled={aiLandingProcessing || !aiLandingInstruction.trim()}
+                      className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-zinc-800 text-black disabled:text-zinc-500 font-extrabold px-4 rounded-xl text-xs flex items-center gap-1.5 transition-all"
+                    >
+                      Generar ⚡
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Column: Live Iframe Preview (3 cols) */}
+              <div className="col-span-3 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col h-full">
+                <div className="bg-zinc-950 px-4 py-2 border-b border-zinc-800 flex justify-between items-center">
+                  <span className="text-xs font-mono text-zinc-500">Live Preview: /{slug}/{selectedVariantForAI === 'landing' ? '' : selectedVariantForAI}</span>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        const variantSlug = selectedVariantForAI === 'landing' ? '' : `/${selectedVariantForAI}`;
+                        navigator.clipboard.writeText(`https://oferta.ingeniodigital.shop/${slug}${variantSlug}`);
+                        alert('Enlace copiado al portapapeles, listo para tus anuncios!');
+                      }}
+                      className="text-[10px] bg-cyan-900/30 border border-cyan-800/50 hover:bg-cyan-800/50 text-cyan-400 font-bold px-2 py-1 rounded flex items-center gap-1 transition-all"
+                    >
+                      <span>🔗</span> Copiar Enlace Comercial
+                    </button>
+                    <a 
+                      href={`https://oferta.ingeniodigital.shop/${slug}${selectedVariantForAI === 'landing' ? '' : `/${selectedVariantForAI}`}`} 
+                      target="_blank" 
+                      className="text-[11px] font-bold bg-zinc-800 hover:bg-zinc-700 text-white px-2 py-1 rounded flex items-center transition-colors"
+                    >
+                      Ver en otra pestaña ↗
+                    </a>
+                  </div>
+                </div>
+                <div className="flex-1 bg-black">
+                  <iframe 
+                    src={`/legacy/${slug}/${selectedVariantForAI === 'landing' ? 'landing' : selectedVariantForAI}/index.html?v=${iframeVersion}`} 
+                    className="w-full h-full border-none" 
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB: VARIANTES */}
           {activeTab === "variantes" && (
             <div className="grid grid-cols-2 gap-6 h-full min-h-[500px]">

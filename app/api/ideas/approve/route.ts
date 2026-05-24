@@ -15,6 +15,79 @@ const generateSlug = (text: string) => {
     .replace(/(^-|-$)+/g, "");
 };
 
+async function generateAiCreativeLanding(
+  templateHtml: string,
+  idea: any,
+  branding: any,
+  creativeBrief: any,
+  checkoutUrl: string
+): Promise<string> {
+  const systemPrompt = `Eres un Diseñador Frontend Senior y Experto en Copywriting y Conversión (Direct Response Marketer).
+Tu tarea es tomar una plantilla de Landing Page en HTML y rediseñarla por completo adaptándola al nicho y avatar del producto del usuario.
+
+REGLAS DE DISEÑO Y ESTRUCTURA (EL ADN):
+1. DEBES MANTENER la misma estructura de conversión (ADN) de la plantilla original: los mismos bloques/secciones en el mismo orden (ej: Top urgency bar, Hero, Dolores, Beneficios, Comparativa Antes/Después, Módulos/Bono de Entrega, Testimonios, Garantía, FAQ, Pricing).
+2. DEBES REESCRIBIR POR COMPLETO el bloque <style> dentro de <head> usando CSS puro (Vanilla CSS). Cambia las variables de color en ':root' por las de la paleta sugerida:
+   - bg: ${branding.colors?.bg || "#081008"}
+   - surface: ${branding.colors?.surface || "#101A10"}
+   - primary: ${branding.colors?.primary || "#10B981"}
+   - text: ${branding.colors?.text || "#F3F4F6"}
+   (y genera variaciones coherentes para borders, text_secondary, primary_hover, accent/glow de forma automática).
+3. IMPORTA Y USA las Google Fonts seleccionadas: Título: '${branding.fonts?.title_font || "Outfit"}', Cuerpo: '${branding.fonts?.body_font || "Inter"}' utilizando el link de importación: '${branding.google_fonts_url || ""}'.
+4. AJUSTA el estilo visual general para que coincida con el concepto '${branding.style_concept || "Modern tech"}'. Por ejemplo:
+   - Si es SaaS/Sleek: Bordes limpios, sombras tenues, contrastes oscuros.
+   - Si es Cálido/Maternidad: Bordes muy redondeados (rounded-3xl), sombras suaves y colores pasteles.
+   - Si es Agresivo/Comercial: Fuentes bold grandes, bordes marcados de alta visibilidad, badges llamativos.
+5. REESCRIBE TODO el copywriting en español de forma extremadamente persuasiva adaptado a:
+   - Nicho: ${idea.niche}
+   - Avatar: ${idea.avatar}
+   - Dolores: ${Array.isArray(idea.pain_points) ? idea.pain_points.join(", ") : idea.pain_points}
+   - Deseos: ${Array.isArray(idea.desires) ? idea.desires.join(", ") : idea.desires}
+   - Modismos/Slang del Nicho: ${Array.isArray(creativeBrief.slang) ? creativeBrief.slang.join(", ") : creativeBrief.slang}
+   - Ángulo Emocional: ${creativeBrief.emotional_hook_angle}
+   - Nivel de Sofisticación del mercado: ${creativeBrief.buyer_sophistication || 3} (a mayor sofisticación, usa argumentos más directos, testimonios y pruebas concretas en vez de promesas vacías).
+6. REEMPLAZA todos los iconos genéricos por iconos SVG limpios e inline que tengan relación lógica con cada sección (ej: si hablas de dinero usa un icono de billete SVG, si hablas de tiempo usa un reloj SVG, si hablas de orden usa una carpeta SVG).
+7. REEMPLAZA las imágenes por URLs de Unsplash con keywords del nicho en la URL, asegurando que tengan una visualización estética (ej: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80').
+8. ENLAZA todos los botones de compra (CTA) con el enlace de checkout: '${checkoutUrl || ""}'.
+
+Devuelve ÚNICAMENTE el código HTML completo y finalizado. NO incluyas explicaciones ni bloques de formato markdown como \`\`\`html. Devuelve directamente el código desde la etiqueta <!DOCTYPE html>.`;
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY || ""}`,
+      "HTTP-Referer": "https://os.ingeniodigital.shop",
+      "X-Title": "Ingenio OS Creative Engine",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.OPENROUTER_MODEL || "google/gemini-1.5-flash",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Aplica la reestructuración y re-estilizado completo a esta plantilla HTML base:\n\n${templateHtml}` }
+      ],
+      temperature: 0.4,
+      max_tokens: 8000,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`AI generation failed: ${response.status} - ${err}`);
+  }
+
+  const data = await response.json();
+  let code = data.choices?.[0]?.message?.content || "";
+  
+  code = code.trim();
+  if (code.startsWith("```html")) {
+    code = code.replace(/^```html/, "").replace(/```$/, "").trim();
+  } else if (code.startsWith("```")) {
+    code = code.replace(/^```/, "").replace(/```$/, "").trim();
+  }
+  return code;
+}
+
 export async function POST(req: Request) {
   try {
     const { ideaId, landingTemplate, productoTemplate, manualTemplate, checkoutUrl } = await req.json();
@@ -65,11 +138,13 @@ export async function POST(req: Request) {
         name: title,
         niche: niche,
         type: "Producto Digital", // Tipo obligatorio en BD
-        color: "#10b981",         // Color por defecto
+        color: idea.branding?.colors?.primary || "#10b981", // Usa color principal del branding
         status: "CONSTRUYENDO",
         price: 29.99, // precio base por defecto
         checkout_url: checkoutUrl || "", // editable en la ficha, inicializado por UI
-        delivery_manual: ""
+        delivery_manual: "",
+        branding: idea.branding || {},
+        creative_brief: idea.creative_brief || {}
       },
     ]);
 
@@ -124,46 +199,58 @@ export async function POST(req: Request) {
     if (landingTemplate && landingTemplate !== "") {
       const landingTemplatePath = path.join(templateSource, "landing", landingTemplate);
       if (fs.existsSync(landingTemplatePath)) {
-        let html = fs.readFileSync(landingTemplatePath, "utf8");
+        let templateHtml = fs.readFileSync(landingTemplatePath, "utf8");
+        let htmlResult = "";
+        
+        try {
+          console.log(`🤖 Iniciando Motor de Generación Creativa por IA para landing: ${slug}...`);
+          htmlResult = await generateAiCreativeLanding(
+            templateHtml,
+            idea,
+            idea.branding || {},
+            idea.creative_brief || {},
+            checkoutUrl || ""
+          );
+          console.log("✅ Landing modelada exitosamente por IA.");
+        } catch (aiError: any) {
+          console.warn("⚠️ Error en generación por IA de la landing, aplicando fallback clásico:", aiError.message);
+          
+          // FALLBACK CLÁSICO (TOKEN REPLACEMENT)
+          const nameParts = title.split(" ");
+          const firstWord = nameParts[0] || "";
+          const remainingWords = nameParts.slice(1).join(" ") || "";
+          
+          htmlResult = templateHtml.replace(/<title>.*?<\/title>/i, `<title>${title} - ${niche}</title>`);
+          htmlResult = htmlResult.replace(
+            /<div class="brand"><span class="v">Verde<\/span><span class="p">Pro<\/span><\/div>/g,
+            `<div class="brand"><span class="v">${firstWord}</span><span class="p">${remainingWords}</span></div>`
+          );
+          htmlResult = htmlResult.replace(/VerdePro/g, title);
+          htmlResult = htmlResult.replace(
+            /Transformá tu verdulería en un negocio <b>con orden, control y ganancia real.<\/b>/,
+            offer
+          );
+          htmlResult = htmlResult.replace(
+            /Dejá de hacer cuentas a mano y vivir apagando incendios\. Con VerdePro controlás ventas, caja, stock, fiado y compras desde un solo lugar — y podés delegar con tranquilidad\./,
+            desc
+          );
+          htmlResult = htmlResult.replace(
+            /SISTEMA EXCLUSIVO PARA VERDULEROS ARGENTINOS/g,
+            `SOLUCIÓN INTEGRAL PARA EL NICHO: ${niche.toUpperCase()}`
+          );
+          htmlResult = htmlResult.replace(/QUIERO ORDENAR MI VERDULERÍA/g, `OBTENER ${title.toUpperCase()}`);
 
-        // Dividir el nombre del logo
-        const nameParts = title.split(" ");
-        const firstWord = nameParts[0] || "";
-        const remainingWords = nameParts.slice(1).join(" ") || "";
+          if (painPoints.length >= 1) htmlResult = htmlResult.replace(/La caja tiene plata… pero no sabés cuánto ganaste/g, painPoints[0]);
+          if (painPoints.length >= 2) htmlResult = htmlResult.replace(/Pérdida silenciosa de mercadería/g, painPoints[1]);
+          if (painPoints.length >= 3) htmlResult = htmlResult.replace(/El fiado está en papel o en tu cabeza/g, painPoints[2]);
+          if (painPoints.length >= 4) htmlResult = htmlResult.replace(/Todo depende de vos para funcionar/g, painPoints[3]);
 
-        // Reemplazos genéricos
-        html = html.replace(/<title>.*?<\/title>/i, `<title>${title} - ${niche}</title>`);
-        html = html.replace(
-          /<div class="brand"><span class="v">Verde<\/span><span class="p">Pro<\/span><\/div>/g,
-          `<div class="brand"><span class="v">${firstWord}</span><span class="p">${remainingWords}</span></div>`
-        );
-        html = html.replace(/VerdePro/g, title);
+          if (desires.length >= 1) htmlResult = htmlResult.replace(/Sabés exactamente cuánto ganás por día/g, desires[0]);
+          if (desires.length >= 2) htmlResult = htmlResult.replace(/Eliminás la calculadora y la libreta/g, desires[1]);
+          if (desires.length >= 3) htmlResult = htmlResult.replace(/Delegás el local sin perder el control/g, desires[2]);
+        }
 
-        // Reemplazo del Hero Title (Hook) y Hero Sub (Copy)
-        html = html.replace(
-          /Transformá tu verdulería en un negocio <b>con orden, control y ganancia real.<\/b>/,
-          offer
-        );
-        html = html.replace(
-          /Dejá de hacer cuentas a mano y vivir apagando incendios\. Con VerdePro controlás ventas, caja, stock, fiado y compras desde un solo lugar — y podés delegar con tranquilidad\./,
-          desc
-        );
-        html = html.replace(
-          /SISTEMA EXCLUSIVO PARA VERDULEROS ARGENTINOS/g,
-          `SOLUCIÓN INTEGRAL PARA EL NICHO: ${niche.toUpperCase()}`
-        );
-        html = html.replace(/QUIERO ORDENAR MI VERDULERÍA/g, `OBTENER ${title.toUpperCase()}`);
-
-        if (painPoints.length >= 1) html = html.replace(/La caja tiene plata… pero no sabés cuánto ganaste/g, painPoints[0]);
-        if (painPoints.length >= 2) html = html.replace(/Pérdida silenciosa de mercadería/g, painPoints[1]);
-        if (painPoints.length >= 3) html = html.replace(/El fiado está en papel o en tu cabeza/g, painPoints[2]);
-        if (painPoints.length >= 4) html = html.replace(/Todo depende de vos para funcionar/g, painPoints[3]);
-
-        if (desires.length >= 1) html = html.replace(/Sabés exactamente cuánto ganás por día/g, desires[0]);
-        if (desires.length >= 2) html = html.replace(/Eliminás la calculadora y la libreta/g, desires[1]);
-        if (desires.length >= 3) html = html.replace(/Delegás el local sin perder el control/g, desires[2]);
-
-        fs.writeFileSync(path.join(landingDir, "index.html"), html, "utf8");
+        fs.writeFileSync(path.join(landingDir, "index.html"), htmlResult, "utf8");
       }
     }
 

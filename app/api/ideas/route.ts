@@ -20,7 +20,10 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { title, niche, notes, pain_points, competitors, status } = body;
+    const { 
+      title, niche, notes, pain_points, competitors, status,
+      avatar, desires, offer, product_description, branding, creative_brief 
+    } = body;
 
     if (!title || !niche) {
       return NextResponse.json({ success: false, error: "Título y Nicho son obligatorios" }, { status: 400 });
@@ -36,6 +39,12 @@ export async function POST(req: Request) {
           pain_points: pain_points || [],
           competitors: competitors || [],
           status: status || "idea",
+          avatar: avatar || "",
+          desires: desires || [],
+          offer: offer || "",
+          product_description: product_description || "",
+          branding: branding || {},
+          creative_brief: creative_brief || {}
         },
       ])
       .select()
@@ -52,7 +61,10 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, title, niche, notes, pain_points, competitors, status } = body;
+    const { 
+      id, title, niche, notes, pain_points, competitors, status,
+      avatar, desires, offer, product_description, branding, creative_brief 
+    } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, error: "El ID de la idea es obligatorio" }, { status: 400 });
@@ -65,6 +77,12 @@ export async function PUT(req: Request) {
     if (pain_points !== undefined) updateFields.pain_points = pain_points;
     if (competitors !== undefined) updateFields.competitors = competitors;
     if (status !== undefined) updateFields.status = status;
+    if (avatar !== undefined) updateFields.avatar = avatar;
+    if (desires !== undefined) updateFields.desires = desires;
+    if (offer !== undefined) updateFields.offer = offer;
+    if (product_description !== undefined) updateFields.product_description = product_description;
+    if (branding !== undefined) updateFields.branding = branding;
+    if (creative_brief !== undefined) updateFields.creative_brief = creative_brief;
     updateFields.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
