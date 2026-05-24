@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || "deepseek/deepseek-chat";
+const rawModel = process.env.OPENROUTER_MODEL || "";
+const DEFAULT_MODEL = rawModel.trim().replace(/\.+$/, "") || "deepseek/deepseek-chat";
 
 export async function POST(req: Request) {
   try {

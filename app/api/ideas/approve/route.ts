@@ -4,7 +4,8 @@ import fs from "fs";
 import path from "path";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || "deepseek/deepseek-chat";
+const rawModel = process.env.OPENROUTER_MODEL || "";
+const DEFAULT_MODEL = rawModel.trim().replace(/\.+$/, "") || "deepseek/deepseek-chat";
 
 // Helper to create clean slugs
 const generateSlug = (text: string) => {
