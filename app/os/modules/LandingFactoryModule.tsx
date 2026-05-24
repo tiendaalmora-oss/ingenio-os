@@ -9,6 +9,7 @@ interface Product {
   color: string;
   sections: string[];
   deployment_domain?: string;
+  status?: string;
 }
 
 export function LandingFactoryModule() {
@@ -62,29 +63,49 @@ export function LandingFactoryModule() {
       ) : (
         <>
           <div className="mb-12">
-            <h3 className="text-sm font-semibold text-zinc-500 uppercase tracking-widest mb-4">Landings Desplegadas</h3>
-            <div className="grid md:grid-cols-2 gap-4">
+            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-6">Carpetas de Producto</h3>
+            <div className="grid md:grid-cols-3 gap-6">
               {products.map((product) => {
                 const hasLanding = product.sections?.includes("landing");
                 
                 return (
-                  <div key={product.id} className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: product.color }}></div>
-                      <div>
-                        <div className="font-bold text-white">{product.name}</div>
-                        <div className="text-xs text-zinc-500">{product.deployment_domain || 'No desplegado'}</div>
-                      </div>
+                  <div 
+                    key={product.id} 
+                    onClick={() => window.location.href = `/os/landing/${product.slug}`}
+                    className="bg-zinc-900/40 border border-zinc-800/80 p-6 rounded-2xl flex flex-col justify-between hover:border-cyan-500/30 hover:bg-zinc-900 transition-all cursor-pointer relative group overflow-hidden"
+                  >
+                    <div className="absolute top-0 left-0 w-full h-[2px]" style={{ backgroundColor: product.color }}></div>
+                    
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="text-4xl group-hover:scale-110 transition-transform duration-200">📁</div>
+                      <span className="text-[10px] font-extrabold uppercase bg-zinc-950 border border-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                        {product.status || 'Active'}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
+
+                    <div>
+                      <h4 className="font-extrabold text-lg text-white group-hover:text-cyan-400 transition-colors">
+                        {product.name}
+                      </h4>
+                      <p className="text-xs text-zinc-500 mt-1 font-mono">
+                        {product.slug}.ingeniodigital.shop
+                      </p>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-zinc-800/50 flex justify-between items-center">
+                      <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                        Ver Carpeta ↗
+                      </span>
                       {hasLanding && (
-                        <a href={`/${product.slug}`} target="_blank" className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white px-2.5 py-1.5 rounded-lg transition-colors">
-                          Live ↗
+                        <a 
+                          href={`/${product.slug}`} 
+                          target="_blank" 
+                          onClick={(e) => e.stopPropagation()} // don't open the folder
+                          className="text-[10px] bg-cyan-950/30 border border-cyan-900/30 text-cyan-400 hover:bg-cyan-950/60 px-2 py-1 rounded transition-colors font-bold"
+                        >
+                          Ver en vivo 🌐
                         </a>
                       )}
-                      <a href={`/os/landing/${product.slug}`} className="text-sm bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-3 py-1.5 rounded-lg hover:bg-cyan-500/20 transition-colors font-semibold">
-                        Abrir Landing HQ →
-                      </a>
                     </div>
                   </div>
                 );

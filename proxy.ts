@@ -19,13 +19,26 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /** Root domains that are treated as the main app (no subdomain routing) */
-const ROOT_DOMAINS = ["os.ingeniodigital.shop", "localhost"];
+const ROOT_DOMAINS = ["os.ingeniodigital.shop", "ingeniodigital.shop", "localhost"];
 
 /** Sections that can be used as a subdomain prefix (before the project) */
 const SECTION_PREFIXES = ["demo", "manual", "app"];
 
-/** Legacy projects that should be served purely as static HTML from public/legacy */
-const LEGACY_PROJECTS = ["verdepro", "carnipro", "lavapro", "barberpro", "gympro"];
+/** System routes that should never be treated as project slugs */
+const SYSTEM_ROUTES = [
+  "os",
+  "login",
+  "api",
+  "_next",
+  "favicon.ico",
+  "robots.txt",
+  "sitemap.xml",
+  "legacy",
+  "pantillas",
+  "templates",
+  "projects",
+  "assets"
+];
 
 /** Paths to skip — _next assets, api, static files, favicon, and legacy folder */
 const SKIP_PATTERN = /^\/((_next|api|favicon\.ico|robots\.txt|sitemap\.xml|legacy))/;
@@ -45,9 +58,9 @@ export function proxy(request: NextRequest) {
 
   // Determine if we're on a root domain
   if (ROOT_DOMAINS.includes(hostname)) {
-    // ---- PASSWORD PROTECTION (Dashboard & /os) ----
-    // Exclude /login to avoid redirect loops
-    if (pathname !== "/login") {
+    // ---- PASSWORD PROTECTION (Dashboard only) ----
+    // Only protect dashboard routes starting with /os
+    if (pathname.startsWith("/os")) {
       const correctPassword = process.env.DASHBOARD_PASSWORD || "ingenio2026";
       const sessionCookie = request.cookies.get("ingenio_session");
 
@@ -62,7 +75,7 @@ export function proxy(request: NextRequest) {
     const parts = pathname.split("/").filter(Boolean);
     if (parts.length > 0) {
       const project = parts[0];
-      if (LEGACY_PROJECTS.includes(project)) {
+      if (!SYSTEM_ROUTES.includes(project)) {
         let targetPath: string | null = null;
         const subPath = parts.slice(1);
 
@@ -110,7 +123,7 @@ export function proxy(request: NextRequest) {
   if (parts.length === 1) {
     // verdepro.ingeniodigital.shop
     const project = parts[0];
-    if (LEGACY_PROJECTS.includes(project)) {
+    if (!SYSTEM_ROUTES.includes(project)) {
       targetPath = pathname === "/" ? `/legacy/${project}/landing/index.html` : `/legacy/${project}/landing${pathname}`;
     } else {
       targetPath = `/${project}${pathname === "/" ? "" : pathname}`;
@@ -119,8 +132,7 @@ export function proxy(request: NextRequest) {
     // demo.verdepro.ingeniodigital.shop
     const [section, project] = parts;
     if (SECTION_PREFIXES.includes(section)) {
-      // Si es un proyecto legacy y no es el dashboard de la app (que será en React)
-      if (LEGACY_PROJECTS.includes(project) && section !== "app") {
+      if (!SYSTEM_ROUTES.includes(project) && section !== "app") {
         targetPath = pathname === "/" ? `/legacy/${project}/${section}/index.html` : `/legacy/${project}/${section}${pathname}`;
       } else {
         targetPath = `/${project}/${section}${pathname === "/" ? "" : pathname}`;

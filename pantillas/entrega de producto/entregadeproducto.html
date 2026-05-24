@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard y Manual - VerdePro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Forest Premium Dark Mode Palette */
+  --bg:        #081008;
+  --surface:   #121A12;
+  --surface2:  #182218;
+  --surface3:  #1E2C1E;
+  
+  --primary:   #10B981;
+  --primary-h: #059669;
+  --primary-g: rgba(16, 185, 129, 0.15);
+  
+  --lime:      #84CC16;
+  --lime-h:    #65A30D;
+  
+  --red:       #EF4444;
+  --orange:    #F59E0B;
+  --blue:      #3B82F6;
+  --purple:    #8B5CF6;
+  
+  --txt:       #F3F4F6;
+  --txt2:      #9CA3AF;
+  --txt3:      #4B5563;
+  
+  --border:    #273527;
+  --border2:   #344734;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg);
+  color: var(--txt);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+  margin: 0;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+/* --- HEADER --- */
+.header {
+  text-align: center;
+  margin-bottom: 60px;
+  animation: fadeIn 1s ease;
+}
+.brand {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 10px;
+}
+.brand .v { color: var(--primary); }
+.brand .p { color: var(--lime); }
+.header-subtitle {
+  color: var(--txt2);
+  font-size: 1.2rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* --- LINKS GRID --- */
+.links-section {
+  margin-bottom: 70px;
+}
+.links-title {
+  font-size: 1.5rem;
+  margin-bottom: 24px;
+  color: var(--txt);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.card:hover {
+  border-color: var(--primary);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.1);
+  background: var(--surface2);
+}
+.card-icon {
+  font-size: 2.8rem;
+  margin-bottom: 16px;
+  background: var(--surface3);
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+}
+.card-title {
+  color: var(--txt);
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.card-desc {
+  color: var(--txt2);
+  font-size: 0.85rem;
+}
+
+/* --- MANUAL --- */
+.manual-header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+.manual-header h2 {
+  font-size: 2.5rem;
+  color: var(--lime);
+  margin-bottom: 10px;
+}
+.manual-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 24px;
+  transition: all 0.2s ease;
+}
+.manual-section:hover {
+  border-color: var(--border2);
+}
+.manual-section h3 {
+  color: var(--primary);
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+.manual-section h4 {
+  color: var(--txt);
+  font-size: 1.2rem;
+  margin: 24px 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.manual-section p {
+  color: var(--txt2);
+  margin-bottom: 16px;
+}
+.manual-section ul {
+  color: var(--txt2);
+  margin: 0 0 16px 0;
+  padding-left: 20px;
+}
+.manual-section li {
+  margin-bottom: 8px;
+}
+.highlight {
+  color: var(--lime);
+  font-weight: 600;
+}
+.badge-step {
+  background: var(--primary-g);
+  color: var(--primary);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+/* --- KEYFRAMES --- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .brand { font-size: 2.5rem; }
+  .manual-section { padding: 20px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  
+  <!-- ENCABEZADO -->
+  <header class="header">
+    <div class="brand"><span class="v">Verde</span><span class="p">Pro</span></div>
+    <p class="header-subtitle">Bienvenido al Centro de Control y Capacitación. Aquí encontrarás todo el material, accesos y el manual paso a paso para dominar tu sistema.</p>
+  </header>
+
+  <!-- ENLACES DIRECTOS -->
+  <section class="links-section">
+    <h2 class="links-title">⚡ Accesos Directos</h2>
+    <div class="grid">
+      <a href="https://drive.google.com/drive/folders/1YQPLMfOIt78uhyNwhlT-FpSGA0kkRnMf?usp=drive_link" target="_blank" class="card">
+        <div class="card-icon" style="color: var(--primary);">🌐</div>
+        <div class="card-title">App Web</div>
+        <div class="card-desc">Acceso directo a la plataforma online de VerdePro.</div>
+      </a>
+      
+      <a href="https://drive.google.com/drive/folders/19YS1k9qAqpS5zKry1q3kar7IpU2l2Qe-?usp=drive_link" target="_blank" class="card">
+        <div class="card-icon" style="color: var(--lime);">💻</div>
+        <div class="card-title">Software VerdePro</div>
+        <div class="card-desc">Instaladores y archivos base del sistema.</div>
+      </a>
+
+      <a href="https://drive.google.com/drive/folders/1Hl_p4Rpetm3CHa-5i4zes1C1Q2GVtxed?usp=drive_link" target="_blank" class="card">
+        <div class="card-icon" style="color: var(--orange);">🧰</div>
+        <div class="card-title">Kit de Gestión</div>
+        <div class="card-desc">Herramientas, plantillas y recursos para tu negocio.</div>
+      </a>
+
+      <a href="https://drive.google.com/drive/folders/1ITnO8I2rpvsroaYYLzTHtXv0_oZivuSu?usp=drive_link" target="_blank" class="card">
+        <div class="card-icon" style="color: var(--blue);">🔄</div>
+        <div class="card-title">Actualizaciones</div>
+        <div class="card-desc">Últimas versiones, parches y mejoras del sistema.</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- MANUAL DE USUARIO -->
+  <div class="manual-header">
+    <h2>📖 Manual de Usuario Profesional</h2>
+    <p style="color: var(--txt2);">Aprende a utilizar cada módulo de VerdePro para exprimir al máximo tu negocio.</p>
+  </div>
+
+  <div class="manual-section">
+    <h3>🛒 1. Módulo POS (Punto de Venta)</h3>
+    <p>El corazón de tu verdulería. Diseñado para ser extremadamente rápido, táctil y compatible con balanzas.</p>
+    
+    <h4>🔹 ¿Cómo realizar una venta?</h4>
+    <ul>
+      <li><span class="badge-step">1</span> Selecciona los productos tocándolos en la cuadrícula. Puedes filtrarlos por categorías (Verduras, Frutas, etc.) en la barra superior.</li>
+      <li><span class="badge-step">2</span> Al elegir un producto pesado (ej. "kg"), el sistema detectará automáticamente la balanza o puedes ingresar el peso manualmente.</li>
+      <li><span class="badge-step">3</span> Presiona <strong>✓ Agregar</strong> para sumarlo al ticket.</li>
+      <li><span class="badge-step">4</span> Selecciona el medio de pago (Efectivo, Tarjeta, Transferencia o Fiado).</li>
+      <li><span class="badge-step">5</span> ¡Listo! Puedes imprimir el ticket o enviarlo por WhatsApp al cliente.</li>
+    </ul>
+
+    <h4>🔹 Cotizaciones por WhatsApp</h4>
+    <p>Si un cliente te pide precios sin comprar en el momento, carga los productos al ticket y presiona <span class="highlight">📄 Enviar / Imprimir Cotización</span>. Esto generará un PDF elegante o un texto listo para mandar por WhatsApp.</p>
+  </div>
+
+  <div class="manual-section">
+    <h3>📊 2. Cuadre de Caja Profesional (Cierre Z)</h3>
+    <p>Control estricto de tu dinero, sin fugas ni errores de cálculo.</p>
+
+    <h4>🔹 Apertura y Cierre</h4>
+    <ul>
+      <li><strong>Abrir Caja:</strong> Al inicio del día, ingresa el "Fondo de Cambio" (el efectivo con el que empiezas).</li>
+      <li><strong>Cierre Z:</strong> Al finalizar el turno, presiona <span class="highlight">🔒 Cierre Z</span>. El sistema te mostrará cuánto efectivo deberías tener (Fondo + Ventas en Efectivo - Gastos/Compras). Ingresa lo que realmente tienes en el cajón y el sistema calculará si hay sobrantes o faltantes.</li>
+    </ul>
+
+    <h4>🔹 Retiros y Gastos</h4>
+    <p>¿Tuviste que pagar un flete o sacar plata para ti? Usa el botón <span class="highlight" style="color: var(--orange)">- Retirar / Gasto</span>. Esto descontará el dinero de la caja para que el Cierre Z sea exacto.</p>
+  </div>
+
+  <div class="manual-section">
+    <h3>📦 3. Stock e Inventario</h3>
+    <p>Mantén tus productos actualizados de forma sencilla.</p>
+    <ul>
+      <li><strong>Agregar Producto:</strong> Presiona "+ Nuevo Producto". Puedes tomarle una foto o elegir un emoji. Define si se vende por Kilo (kg) o Unidad (und), su costo y precio de venta.</li>
+      <li><strong>Editar:</strong> Usa el ícono del lápiz (✏️) para cambiar precios rápidamente cuando haya aumentos.</li>
+      <li><strong>Alertas visuales:</strong> Los productos sin stock se marcarán en <span style="color: var(--red); font-weight: bold;">rojo</span> automáticamente en la pantalla de ventas.</li>
+    </ul>
+  </div>
+
+  <div class="manual-section">
+    <h3>🚚 4. Compras a Proveedores (Mercado)</h3>
+    <p>Registra lo que traes del Mercado Central para actualizar tu stock al instante.</p>
+    <ul>
+      <li><span class="badge-step">1</span> Entra a Compras y presiona "+ Registrar Compra".</li>
+      <li><span class="badge-step">2</span> Selecciona el producto e ingresa cuántos bultos/cajones compraste y cuántos kilos trae cada uno.</li>
+      <li><span class="badge-step">3</span> Ingresa el Costo TOTAL pagado por esa compra.</li>
+      <li><span class="badge-step">4</span> VerdePro sumará esos kilos al Stock y recalculará automáticamente el costo unitario del producto. <strong>¡Además, el gasto se descuenta automáticamente de la caja!</strong></li>
+    </ul>
+  </div>
+
+  <div class="manual-section">
+    <h3>👥 5. Gestión de Fiado (Clientes)</h3>
+    <p>El control de "cuentas corrientes" para tus clientes de confianza y restaurantes (rotiserías).</p>
+    <ul>
+      <li><strong>Crear Cliente:</strong> Agrega el nombre y teléfono de tu cliente.</li>
+      <li><strong>Vender al Fiado:</strong> En el POS, cobra la venta eligiendo "📒 Fiado" y selecciona al cliente. La deuda se le sumará a su cuenta.</li>
+      <li><strong>Saldar Deuda:</strong> En la sección Fiado, busca al cliente y presiona "Registrar Pago". El dinero ingresará a tu caja de ese día.</li>
+    </ul>
+  </div>
+
+  <div class="manual-section">
+    <h3>⚙️ 6. Configuración del Negocio</h3>
+    <p>Personaliza VerdePro con la identidad de tu local.</p>
+    <ul>
+      <li>Ingresa el Nombre, Responsable, Dirección, Teléfono y CUIT de tu local.</li>
+      <li><strong>Logo:</strong> Sube tu logo para que aparezca en las cotizaciones PDF y tickets impresos, dándole un toque súper profesional a tus entregas.</li>
+    </ul>
+  </div>
+
+</div>
+
+</body>
+</html>

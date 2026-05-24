@@ -109,3 +109,40 @@ export async function archivePackage(id: string, slug: string) {
   await supabase.from('creative_packages').update({ status: 'ARCHIVED' }).eq('id', id);
   revalidatePath(`/os/creative/${slug}`);
 }
+
+export async function updatePackageTexts(id: string, slug: string, hookText: string, copyText: string) {
+  try {
+    await supabase.from('creative_packages').update({ hook_text: hookText, copy_text: copyText }).eq('id', id);
+    revalidatePath(`/os/creative/${slug}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error updating package texts:", err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateAssetContent(id: string, slug: string, content: string) {
+  try {
+    await supabase.from('creative_assets').update({ content }).eq('id', id);
+    revalidatePath(`/os/creative/${slug}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error updating asset content:", err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function addScriptAsset(slug: string, content: string) {
+  try {
+    await supabase.from('creative_assets').insert({
+      product_slug: slug,
+      type: 'script',
+      content
+    });
+    revalidatePath(`/os/creative/${slug}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error adding script asset:", err.message);
+    return { success: false, error: err.message };
+  }
+}
