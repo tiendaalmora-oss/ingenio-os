@@ -12,6 +12,8 @@ export async function getProductData(slug: string) {
     const { data: newProduct } = await supabase.from('products').insert({
       slug,
       name: slug.charAt(0).toUpperCase() + slug.slice(1),
+      type: 'Producto Digital', // Campo obligatorio en BD
+      color: '#10b981',         // Color por defecto
       status: 'IDEA'
     }).select().single();
     product = newProduct;

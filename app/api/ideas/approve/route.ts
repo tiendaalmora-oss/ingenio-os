@@ -63,6 +63,8 @@ export async function POST(req: Request) {
         slug,
         name: title,
         niche: niche,
+        type: "Producto Digital", // Tipo obligatorio en BD
+        color: "#10b981",         // Color por defecto
         status: "CONSTRUYENDO",
         price: 29.99, // precio base por defecto
         checkout_url: "", // editable en la ficha
