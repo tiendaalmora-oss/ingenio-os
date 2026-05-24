@@ -61,6 +61,13 @@ export function ProductFactoryModule() {
   const [approvingIdea, setApprovingIdea] = useState(false);
   const [savingIdea, setSavingIdea] = useState(false);
 
+  // Template Selection State
+  const [availableTemplates, setAvailableTemplates] = useState<{landing: string[], producto: string[], manual: string[]}>({landing: [], producto: [], manual: []});
+  const [landingTemplate, setLandingTemplate] = useState("");
+  const [productoTemplate, setProductoTemplate] = useState("");
+  const [manualTemplate, setManualTemplate] = useState("");
+  const [checkoutUrl, setCheckoutUrl] = useState("");
+
   // Fetch Products
   const fetchProducts = async () => {
     try {
@@ -94,9 +101,26 @@ export function ProductFactoryModule() {
     }
   };
 
+  const fetchTemplates = async () => {
+    try {
+      const res = await fetch("/api/templates");
+      const data = await res.json();
+      if (data.success && data.templates) {
+        setAvailableTemplates(data.templates);
+        // Establecer valores por defecto si hay opciones disponibles
+        if (data.templates.landing.length > 0) setLandingTemplate(data.templates.landing[0]);
+        if (data.templates.producto.length > 0) setProductoTemplate(data.templates.producto[0]);
+        if (data.templates.manual.length > 0) setManualTemplate(data.templates.manual[0]);
+      }
+    } catch (e) {
+      console.error("Error cargando templates", e);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
     fetchIdeas();
+    fetchTemplates();
   }, []);
 
   const handleOpenNewIdeaModal = () => {
@@ -109,6 +133,7 @@ export function ProductFactoryModule() {
     setIdeaDesires("");
     setIdeaOffer("");
     setIdeaProdDesc("");
+    setCheckoutUrl("");
     setIsModalOpen(true);
   };
 
@@ -122,6 +147,7 @@ export function ProductFactoryModule() {
     setIdeaDesires((idea.desires || []).join(", "));
     setIdeaOffer(idea.offer || "");
     setIdeaProdDesc(idea.product_description || "");
+    setCheckoutUrl(""); // Se pide solo al momento de aprobar
     setIsModalOpen(true);
   };
 
@@ -219,7 +245,13 @@ export function ProductFactoryModule() {
       const res = await fetch("/api/ideas/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ideaId: selectedIdea.id }),
+        body: JSON.stringify({ 
+          ideaId: selectedIdea.id,
+          landingTemplate,
+          productoTemplate,
+          manualTemplate,
+          checkoutUrl
+        }),
       });
       
       const data = await res.json();
@@ -595,28 +627,77 @@ export function ProductFactoryModule() {
 
             {/* Approve Panel for Edit Mode */}
             {selectedIdea && (
-              <div className="mt-8 p-5 bg-green-950/10 border border-green-500/20 rounded-2xl flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-green-400 flex items-center gap-1.5">
-                    <span>🚀</span> ¿Listo para Validar el Mercado?
-                  </h4>
-                  <p className="text-[11px] text-zinc-400 mt-1 max-w-sm">Aprobar la idea creará instantáneamente la landing page real y los anuncios iniciales para salir a vender.</p>
+              <div className="mt-8 p-5 bg-green-950/10 border border-green-500/20 rounded-2xl flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-green-400 flex items-center gap-1.5">
+                      <span>🚀</span> ¿Listo para Validar el Mercado?
+                    </h4>
+                    <p className="text-[11px] text-zinc-400 mt-1 max-w-sm">Configura la URL de pago y elige qué plantillas deseas que la IA modele antes de lanzar la orquesta.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleApproveIdea}
+                    disabled={approvingIdea}
+                    className="bg-gradient-to-r from-green-400 to-cyan-500 text-black px-6 py-2.5 rounded-xl text-sm font-black tracking-wide shadow-md shadow-green-500/10 hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {approvingIdea ? (
+                      <><span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span> Desplegando...</>
+                    ) : (
+                      <>🚀 APROBAR E INICIAR</>
+                    )}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleApproveIdea}
-                  disabled={approvingIdea}
-                  className="bg-gradient-to-r from-green-400 to-cyan-500 text-black px-5 py-2.5 rounded-xl text-xs font-black tracking-wide shadow-md shadow-green-500/10 hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
-                >
-                  {approvingIdea ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                      Desplegando...
-                    </>
-                  ) : (
-                    <>🚀 Aprobar e Iniciar</>
-                  )}
-                </button>
+                
+                <div className="grid grid-cols-2 gap-4 p-4 bg-black/40 border border-zinc-800/80 rounded-xl mt-2">
+                  <div className="col-span-2">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Link de Pago (Checkout / WhatsApp)</label>
+                    <input 
+                      type="text" 
+                      value={checkoutUrl}
+                      onChange={e => setCheckoutUrl(e.target.value)}
+                      placeholder="https://link.mercadopago.com.ar/..."
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-green-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Plantilla de Landing</label>
+                    <select 
+                      value={landingTemplate} 
+                      onChange={e => setLandingTemplate(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-green-500"
+                    >
+                      <option value="">-- Ninguna --</option>
+                      {availableTemplates.landing.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Plantilla de Producto</label>
+                    <select 
+                      value={productoTemplate} 
+                      onChange={e => setProductoTemplate(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-green-500"
+                    >
+                      <option value="">-- Ninguna --</option>
+                      {availableTemplates.producto.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Plantilla de Manual (Entrega)</label>
+                    <select 
+                      value={manualTemplate} 
+                      onChange={e => setManualTemplate(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-green-500"
+                    >
+                      <option value="">-- Ninguna --</option>
+                      {availableTemplates.manual.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                </div>
+
               </div>
             )}
 

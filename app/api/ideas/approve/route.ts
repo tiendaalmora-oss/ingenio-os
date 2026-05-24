@@ -17,7 +17,7 @@ const generateSlug = (text: string) => {
 
 export async function POST(req: Request) {
   try {
-    const { ideaId } = await req.json();
+    const { ideaId, landingTemplate, productoTemplate, manualTemplate, checkoutUrl } = await req.json();
 
     if (!ideaId) {
       return NextResponse.json(
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
         color: "#10b981",         // Color por defecto
         status: "CONSTRUYENDO",
         price: 29.99, // precio base por defecto
-        checkout_url: "", // editable en la ficha
+        checkout_url: checkoutUrl || "", // editable en la ficha, inicializado por UI
         delivery_manual: ""
       },
     ]);
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
             hook: offer,
             copy: desc,
             ctaText: `Quiero obtener ${title}`,
-            checkoutUrl: "",
+            checkoutUrl: checkoutUrl || "",
             primaryColor: "#10b981",
           },
         },
@@ -120,115 +120,104 @@ export async function POST(req: Request) {
 
     const templateSource = path.join(process.cwd(), "pantillas");
 
-    // A. Adaptar Landing (landing.html)
-    const landingTemplatePath = path.join(templateSource, "landing", "landing.html");
-    if (fs.existsSync(landingTemplatePath)) {
-      let html = fs.readFileSync(landingTemplatePath, "utf8");
+    // A. Adaptar Landing
+    if (landingTemplate && landingTemplate !== "") {
+      const landingTemplatePath = path.join(templateSource, "landing", landingTemplate);
+      if (fs.existsSync(landingTemplatePath)) {
+        let html = fs.readFileSync(landingTemplatePath, "utf8");
 
-      // Dividir el nombre del logo (primer palabra y el resto)
-      const nameParts = title.split(" ");
-      const firstWord = nameParts[0] || "";
-      const remainingWords = nameParts.slice(1).join(" ") || "";
+        // Dividir el nombre del logo
+        const nameParts = title.split(" ");
+        const firstWord = nameParts[0] || "";
+        const remainingWords = nameParts.slice(1).join(" ") || "";
 
-      // Reemplazos genéricos
-      html = html.replace(/<title>.*?<\/title>/i, `<title>${title} - ${niche}</title>`);
-      html = html.replace(
-        /<div class="brand"><span class="v">Verde<\/span><span class="p">Pro<\/span><\/div>/g,
-        `<div class="brand"><span class="v">${firstWord}</span><span class="p">${remainingWords}</span></div>`
-      );
-      html = html.replace(/VerdePro/g, title);
+        // Reemplazos genéricos
+        html = html.replace(/<title>.*?<\/title>/i, `<title>${title} - ${niche}</title>`);
+        html = html.replace(
+          /<div class="brand"><span class="v">Verde<\/span><span class="p">Pro<\/span><\/div>/g,
+          `<div class="brand"><span class="v">${firstWord}</span><span class="p">${remainingWords}</span></div>`
+        );
+        html = html.replace(/VerdePro/g, title);
 
-      // Reemplazo del Hero Title (Hook) y Hero Sub (Copy)
-      html = html.replace(
-        /Transformá tu verdulería en un negocio <b>con orden, control y ganancia real.<\/b>/,
-        offer
-      );
-      html = html.replace(
-        /Dejá de hacer cuentas a mano y vivir apagando incendios\. Con VerdePro controlás ventas, caja, stock, fiado y compras desde un solo lugar — y podés delegar con tranquilidad\./,
-        desc
-      );
-      html = html.replace(
-        /SISTEMA EXCLUSIVO PARA VERDULEROS ARGENTINOS/g,
-        `SOLUCIÓN INTEGRAL PARA EL NICHO: ${niche.toUpperCase()}`
-      );
-      html = html.replace(/QUIERO ORDENAR MI VERDULERÍA/g, `OBTENER ${title.toUpperCase()}`);
+        // Reemplazo del Hero Title (Hook) y Hero Sub (Copy)
+        html = html.replace(
+          /Transformá tu verdulería en un negocio <b>con orden, control y ganancia real.<\/b>/,
+          offer
+        );
+        html = html.replace(
+          /Dejá de hacer cuentas a mano y vivir apagando incendios\. Con VerdePro controlás ventas, caja, stock, fiado y compras desde un solo lugar — y podés delegar con tranquilidad\./,
+          desc
+        );
+        html = html.replace(
+          /SISTEMA EXCLUSIVO PARA VERDULEROS ARGENTINOS/g,
+          `SOLUCIÓN INTEGRAL PARA EL NICHO: ${niche.toUpperCase()}`
+        );
+        html = html.replace(/QUIERO ORDENAR MI VERDULERÍA/g, `OBTENER ${title.toUpperCase()}`);
 
-      // Reemplazar dolores en las tarjetas (si hay dolor estructurado)
-      if (painPoints.length >= 1) {
-        html = html.replace(/La caja tiene plata… pero no sabés cuánto ganaste/g, painPoints[0]);
-      }
-      if (painPoints.length >= 2) {
-        html = html.replace(/Pérdida silenciosa de mercadería/g, painPoints[1]);
-      }
-      if (painPoints.length >= 3) {
-        html = html.replace(/El fiado está en papel o en tu cabeza/g, painPoints[2]);
-      }
-      if (painPoints.length >= 4) {
-        html = html.replace(/Todo depende de vos para funcionar/g, painPoints[3]);
-      }
+        if (painPoints.length >= 1) html = html.replace(/La caja tiene plata… pero no sabés cuánto ganaste/g, painPoints[0]);
+        if (painPoints.length >= 2) html = html.replace(/Pérdida silenciosa de mercadería/g, painPoints[1]);
+        if (painPoints.length >= 3) html = html.replace(/El fiado está en papel o en tu cabeza/g, painPoints[2]);
+        if (painPoints.length >= 4) html = html.replace(/Todo depende de vos para funcionar/g, painPoints[3]);
 
-      // Reemplazar deseos en los checkpoints de solución
-      if (desires.length >= 1) {
-        html = html.replace(/Sabés exactamente cuánto ganás por día/g, desires[0]);
-      }
-      if (desires.length >= 2) {
-        html = html.replace(/Eliminás la calculadora y la libreta/g, desires[1]);
-      }
-      if (desires.length >= 3) {
-        html = html.replace(/Delegás el local sin perder el control/g, desires[2]);
-      }
+        if (desires.length >= 1) html = html.replace(/Sabés exactamente cuánto ganás por día/g, desires[0]);
+        if (desires.length >= 2) html = html.replace(/Eliminás la calculadora y la libreta/g, desires[1]);
+        if (desires.length >= 3) html = html.replace(/Delegás el local sin perder el control/g, desires[2]);
 
-      fs.writeFileSync(path.join(landingDir, "index.html"), html, "utf8");
+        fs.writeFileSync(path.join(landingDir, "index.html"), html, "utf8");
+      }
     }
 
-    // B. Adaptar Manual (entregadeproducto.html)
-    const manualTemplatePath = path.join(templateSource, "entrega de producto", "entregadeproducto.html");
-    if (fs.existsSync(manualTemplatePath)) {
-      let html = fs.readFileSync(manualTemplatePath, "utf8");
+    // B. Adaptar Manual
+    if (manualTemplate && manualTemplate !== "") {
+      const manualTemplatePath = path.join(templateSource, "entrega de producto", manualTemplate);
+      if (fs.existsSync(manualTemplatePath)) {
+        let html = fs.readFileSync(manualTemplatePath, "utf8");
 
-      const nameParts = title.split(" ");
-      const firstWord = nameParts[0] || "";
-      const remainingWords = nameParts.slice(1).join(" ") || "";
+        const nameParts = title.split(" ");
+        const firstWord = nameParts[0] || "";
+        const remainingWords = nameParts.slice(1).join(" ") || "";
 
-      html = html.replace(/<title>.*?<\/title>/i, `<title>Manual de Entrega - ${title}</title>`);
-      html = html.replace(
-        /<div class="brand"><span class="v">Verde<\/span><span class="p">Pro<\/span><\/div>/g,
-        `<div class="brand"><span class="v">${firstWord}</span><span class="p">${remainingWords}</span></div>`
-      );
-      html = html.replace(/VerdePro/g, title);
-      html = html.replace(
-        /Bienvenido al Centro de Control y Capacitación\. Aquí encontrarás todo el material, accesos y el manual paso a paso para dominar tu sistema\./,
-        `Bienvenido al área de entrega de ${title}. A continuación encontrarás los accesos y el manual paso a paso para utilizar tu nuevo producto.`
-      );
+        html = html.replace(/<title>.*?<\/title>/i, `<title>Manual de Entrega - ${title}</title>`);
+        html = html.replace(
+          /<div class="brand"><span class="v">Verde<\/span><span class="p">Pro<\/span><\/div>/g,
+          `<div class="brand"><span class="v">${firstWord}</span><span class="p">${remainingWords}</span></div>`
+        );
+        html = html.replace(/VerdePro/g, title);
+        html = html.replace(
+          /Bienvenido al Centro de Control y Capacitación\. Aquí encontrarás todo el material, accesos y el manual paso a paso para dominar tu sistema\./,
+          `Bienvenido al área de entrega de ${title}. A continuación encontrarás los accesos y el manual paso a paso para utilizar tu nuevo producto.`
+        );
 
-      fs.writeFileSync(path.join(manualDir, "index.html"), html, "utf8");
+        fs.writeFileSync(path.join(manualDir, "index.html"), html, "utf8");
+        
+        // Guardar el manual en la DB del producto para edición Markdown futura
+        await supabase.from("products").update({
+          delivery_manual: `# Manual de Entrega: ${title}\n\nEste es tu manual de entrega autogenerado. Puedes editarlo desde la pestaña de manual.`
+        }).eq("slug", slug);
+      }
+    }
+
+    // C. Adaptar Producto
+    if (productoTemplate && productoTemplate !== "") {
+      const productTemplatePath = path.join(templateSource, "producto", productoTemplate);
+      if (fs.existsSync(productTemplatePath)) {
+        let html = fs.readFileSync(productTemplatePath, "utf8");
+        html = html.replace(/VerdePro/g, title);
+        fs.writeFileSync(path.join(productDir, "index.html"), html, "utf8");
+      }
       
-      // Guardar el manual en la DB del producto para edición Markdown futura
-      await supabase.from("products").update({
-        delivery_manual: `# Manual de Entrega: ${title}\n\nEste es tu manual de entrega autogenerado. Puedes editarlo desde la pestaña de manual.`
-      }).eq("slug", slug);
-    }
-
-    // C. Adaptar Demo (demo.html)
-    const demoTemplatePath = path.join(templateSource, "demo", "demo.html");
-    if (fs.existsSync(demoTemplatePath)) {
-      let html = fs.readFileSync(demoTemplatePath, "utf8");
-      html = html.replace(/VerdePro/g, title);
-      html = html.replace(/<title>.*?<\/title>/i, `<title>Demo de Producto - ${title}</title>`);
-      fs.writeFileSync(path.join(demoDir, "index.html"), html, "utf8");
-    }
-
-    // D. Adaptar Producto (VerdePro.html y .zip)
-    const productTemplatePath = path.join(templateSource, "producto", "VerdePro.html");
-    if (fs.existsSync(productTemplatePath)) {
-      let html = fs.readFileSync(productTemplatePath, "utf8");
-      html = html.replace(/VerdePro/g, title);
-      fs.writeFileSync(path.join(productDir, "index.html"), html, "utf8");
-    }
-
-    const productZipPath = path.join(templateSource, "producto", "VerdePro_ Softwere2.1.zip");
-    if (fs.existsSync(productZipPath)) {
-      fs.copyFileSync(productZipPath, path.join(productDir, `${slug}_Software.zip`));
+      // Buscar archivos complementarios con el mismo nombre base (ej: zip)
+      const prodExt = path.extname(productoTemplate);
+      const prodBase = path.basename(productoTemplate, prodExt);
+      const folderPath = path.join(templateSource, "producto");
+      if (fs.existsSync(folderPath)) {
+        const files = fs.readdirSync(folderPath);
+        for (const file of files) {
+          if (file.startsWith(prodBase) && file.endsWith(".zip")) {
+            fs.copyFileSync(path.join(folderPath, file), path.join(productDir, `${slug}_Software.zip`));
+          }
+        }
+      }
     }
 
     // 5. Generar 3 Conceptos Creativos y Scripts mediante IA (DeepSeek)
