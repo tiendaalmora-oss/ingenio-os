@@ -31,7 +31,7 @@ interface Idea {
 }
 
 export function ProductFactoryModule() {
-  const [activeTab, setActiveTab] = useState<"products" | "ideas">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "ideas" | "templates">("products");
   
   // Products State
   const [products, setProducts] = useState<Product[]>([]);
@@ -67,6 +67,11 @@ export function ProductFactoryModule() {
   const [productoTemplate, setProductoTemplate] = useState("");
   const [manualTemplate, setManualTemplate] = useState("");
   const [checkoutUrl, setCheckoutUrl] = useState("");
+
+  // Template Upload State
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadCategory, setUploadCategory] = useState("landing");
+  const [uploading, setUploading] = useState(false);
 
   // Fetch Products
   const fetchProducts = async () => {
@@ -122,6 +127,34 @@ export function ProductFactoryModule() {
     fetchIdeas();
     fetchTemplates();
   }, []);
+
+  const handleUploadTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadFile) return;
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("category", uploadCategory);
+
+      const res = await fetch("/api/templates/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      alert("Plantilla subida con éxito!");
+      setUploadFile(null);
+      // Recargar plantillas
+      fetchTemplates();
+    } catch (err: any) {
+      alert("Error al subir plantilla: " + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleOpenNewIdeaModal = () => {
     setSelectedIdea(null);
@@ -316,6 +349,16 @@ export function ProductFactoryModule() {
         >
           <span>💡</span> Pipeline de Ideas ({ideas.length})
         </button>
+        <button
+          onClick={() => setActiveTab("templates")}
+          className={`px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${
+            activeTab === "templates"
+              ? "bg-zinc-800 text-white shadow-md border border-zinc-700/50"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <span>📂</span> Mis Plantillas
+        </button>
       </div>
 
       {/* TAB: PRODUCTS */}
@@ -468,6 +511,87 @@ export function ProductFactoryModule() {
             </div>
           )}
         </>
+      )}
+
+      {/* TAB: TEMPLATES */}
+      {activeTab === "templates" && (
+        <div className="space-y-8">
+          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>⬆️</span> Subir Nueva Plantilla</h3>
+            <form onSubmit={handleUploadTemplate} className="flex gap-4 items-end">
+              <div className="flex-1">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Archivo (.html, .zip)</label>
+                <input 
+                  type="file" 
+                  accept=".html,.zip"
+                  onChange={e => setUploadFile(e.target.files?.[0] || null)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300"
+                  required
+                />
+              </div>
+              <div className="w-64">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Tipo de Plantilla</label>
+                <select 
+                  value={uploadCategory} 
+                  onChange={e => setUploadCategory(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs text-zinc-300 outline-none"
+                >
+                  <option value="landing">Landing Page</option>
+                  <option value="producto">Producto Principal / Software</option>
+                  <option value="manual">Manual de Entrega</option>
+                </select>
+              </div>
+              <button 
+                type="submit" 
+                disabled={!uploadFile || uploading}
+                className="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-2.5 rounded-lg text-xs font-bold disabled:opacity-50 transition-colors h-10"
+              >
+                {uploading ? "Subiendo..." : "Subir Plantilla"}
+              </button>
+            </form>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Landing Templates */}
+            <div className="bg-zinc-900/20 border border-zinc-800/50 rounded-xl p-5">
+              <h4 className="text-sm font-bold text-cyan-400 mb-4 border-b border-zinc-800 pb-2">Landings ({availableTemplates.landing.length})</h4>
+              <ul className="space-y-2">
+                {availableTemplates.landing.map(t => (
+                  <li key={t} className="text-xs text-zinc-400 bg-zinc-950 px-3 py-2 rounded flex items-center gap-2">
+                    <span>📄</span> {t}
+                  </li>
+                ))}
+                {availableTemplates.landing.length === 0 && <li className="text-xs text-zinc-600 italic">No hay plantillas</li>}
+              </ul>
+            </div>
+
+            {/* Product Templates */}
+            <div className="bg-zinc-900/20 border border-zinc-800/50 rounded-xl p-5">
+              <h4 className="text-sm font-bold text-blue-400 mb-4 border-b border-zinc-800 pb-2">Productos ({availableTemplates.producto.length})</h4>
+              <ul className="space-y-2">
+                {availableTemplates.producto.map(t => (
+                  <li key={t} className="text-xs text-zinc-400 bg-zinc-950 px-3 py-2 rounded flex items-center gap-2">
+                    <span>📦</span> {t}
+                  </li>
+                ))}
+                {availableTemplates.producto.length === 0 && <li className="text-xs text-zinc-600 italic">No hay plantillas</li>}
+              </ul>
+            </div>
+
+            {/* Manual Templates */}
+            <div className="bg-zinc-900/20 border border-zinc-800/50 rounded-xl p-5">
+              <h4 className="text-sm font-bold text-green-400 mb-4 border-b border-zinc-800 pb-2">Manuales de Entrega ({availableTemplates.manual.length})</h4>
+              <ul className="space-y-2">
+                {availableTemplates.manual.map(t => (
+                  <li key={t} className="text-xs text-zinc-400 bg-zinc-950 px-3 py-2 rounded flex items-center gap-2">
+                    <span>📖</span> {t}
+                  </li>
+                ))}
+                {availableTemplates.manual.length === 0 && <li className="text-xs text-zinc-600 italic">No hay plantillas</li>}
+              </ul>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* IDEA MODAL / DRAWER */}
