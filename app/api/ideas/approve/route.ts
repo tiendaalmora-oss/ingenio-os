@@ -282,12 +282,22 @@ Responde únicamente con el JSON válido.`;
             response_format: { type: "json_object" },
             messages: [{ role: "user", content: aiPrompt }],
             temperature: 0.8,
+            max_tokens: 2500,
           }),
         });
 
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
-          const parsed = JSON.parse(aiData.choices?.[0]?.message?.content || "{}");
+          let content = aiData.choices?.[0]?.message?.content || "{}";
+          
+          content = content.trim();
+          if (content.startsWith("```json")) {
+            content = content.replace(/^```json/, "").replace(/```$/, "").trim();
+          } else if (content.startsWith("```")) {
+            content = content.replace(/^```/, "").replace(/```$/, "").trim();
+          }
+
+          const parsed = JSON.parse(content);
 
           if (parsed.angles && Array.isArray(parsed.angles)) {
             for (let i = 0; i < parsed.angles.length; i++) {

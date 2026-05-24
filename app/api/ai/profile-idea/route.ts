@@ -52,6 +52,7 @@ Responde únicamente con el objeto JSON válido. No agregues texto adicional ant
           { role: "user", content: userPrompt },
         ],
         temperature: 0.7,
+        max_tokens: 2000,
       }),
     });
 
@@ -61,10 +62,17 @@ Responde únicamente con el objeto JSON válido. No agregues texto adicional ant
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    let content = data.choices?.[0]?.message?.content;
 
     if (!content) {
       throw new Error("La IA devolvió una respuesta vacía.");
+    }
+
+    content = content.trim();
+    if (content.startsWith("```json")) {
+      content = content.replace(/^```json/, "").replace(/```$/, "").trim();
+    } else if (content.startsWith("```")) {
+      content = content.replace(/^```/, "").replace(/```$/, "").trim();
     }
 
     const profileData = JSON.parse(content);
