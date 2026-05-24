@@ -44,6 +44,10 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
   const [fileContent, setFileContent] = useState("");
   const [savingCode, setSavingCode] = useState(false);
 
+  // State: AI Code Assistant
+  const [aiInstruction, setAiInstruction] = useState("");
+  const [aiProcessing, setAiProcessing] = useState(false);
+
   // Load File Tree function
   const refreshFileTree = async () => {
     const tree = await getFileTree(slug);
@@ -89,6 +93,26 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
     setSavingCode(true);
     await saveFileContent(slug, activeFile.category, activeFile.path, fileContent);
     setSavingCode(false);
+  };
+
+  const handleAIAssist = async () => {
+    if (!activeFile || !aiInstruction.trim() || !fileContent.trim()) return;
+    setAiProcessing(true);
+    try {
+      const res = await fetch("/api/ai/edit-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: fileContent, instruction: aiInstruction })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      setFileContent(data.newCode);
+      setAiInstruction("");
+    } catch (err: any) {
+      alert("Error de IA: " + err.message);
+    } finally {
+      setAiProcessing(false);
+    }
   };
 
   // Save product details (Ficha)
@@ -288,7 +312,18 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
               <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden flex flex-col h-full">
                 <div className="bg-zinc-950 px-4 py-2 border-b border-zinc-800 flex justify-between items-center">
                   <span className="text-xs font-mono text-zinc-500">Preview: /{slug}</span>
-                  <a href={`/${slug}`} target="_blank" className="text-xs text-cyan-400 hover:underline">Ver Live ↗</a>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://oferta.ingeniodigital.shop/${slug}`);
+                        alert('URL copiada al portapapeles, lista para Meta Ads!');
+                      }}
+                      className="text-[10px] bg-cyan-900/30 border border-cyan-800/50 hover:bg-cyan-800/50 text-cyan-400 font-bold px-2 py-1 rounded flex items-center gap-1 transition-all"
+                    >
+                      <span>🔗</span> Copiar URL para Meta Ads
+                    </button>
+                    <a href={`https://oferta.ingeniodigital.shop/${slug}`} target="_blank" className="text-[11px] font-bold bg-zinc-800 hover:bg-zinc-700 text-white px-2 py-1 rounded flex items-center transition-colors">Ver Live ↗</a>
+                  </div>
                 </div>
                 <div className="flex-1 bg-black">
                   <iframe src={`/${slug}`} className="w-full h-full border-none" />
@@ -391,7 +426,18 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
               <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden flex flex-col h-full">
                 <div className="bg-zinc-950 px-4 py-2 border-b border-zinc-800 flex justify-between items-center">
                   <span className="text-xs font-mono text-zinc-500">Preview: /manual (HTML en vivo)</span>
-                  <a href={`/legacy/${slug}/manual/index.html`} target="_blank" className="text-xs text-cyan-400 hover:underline">Ver pantalla completa ↗</a>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://oferta.ingeniodigital.shop/${slug}/manual`);
+                        alert('URL del manual copiada');
+                      }}
+                      className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold px-2 py-1 rounded transition-colors"
+                    >
+                      Copiar URL
+                    </button>
+                    <a href={`https://oferta.ingeniodigital.shop/${slug}/manual`} target="_blank" className="text-[11px] font-bold bg-zinc-800 hover:bg-zinc-700 text-white px-2 py-1 rounded flex items-center transition-colors">Pantalla Completa ↗</a>
+                  </div>
                 </div>
                 <div className="flex-1 bg-black">
                   <iframe src={`/legacy/${slug}/manual/index.html`} className="w-full h-full border-none" />
@@ -437,8 +483,8 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
 
           {/* TAB: CODIGO */}
           {activeTab === "codigo" && (
-            <div className="flex h-full gap-4">
-              <div className="w-64 bg-zinc-900 border border-zinc-800 rounded-xl p-3 overflow-y-auto">
+            <div className="flex h-full gap-4 min-h-[600px]">
+              <div className="w-56 bg-zinc-900 border border-zinc-800 rounded-xl p-3 overflow-y-auto">
                 <div className="flex justify-between items-center mb-3">
                   <div className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Archivos</div>
                   <button onClick={refreshFileTree} className="text-xs text-zinc-400 hover:text-white" title="Recargar archivos">🔄</button>
@@ -449,8 +495,8 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
                 <div className="bg-zinc-950 px-4 py-2 border-b border-zinc-800 flex justify-between items-center">
                   <span className="text-sm font-mono text-zinc-300">{activeFile ? activeFile.path : 'Selecciona un archivo'}</span>
                   {activeFile && (
-                    <button onClick={handleSaveCode} disabled={savingCode} className="bg-cyan-500 hover:bg-cyan-600 text-black px-4 py-1 rounded text-xs font-bold">
-                      {savingCode ? 'Guardando...' : 'Guardar Cambios'}
+                    <button onClick={handleSaveCode} disabled={savingCode} className="bg-cyan-500 hover:bg-cyan-600 text-black px-4 py-1.5 rounded text-xs font-bold transition-colors">
+                      {savingCode ? 'Guardando...' : '💾 Guardar Cambios'}
                     </button>
                   )}
                 </div>
@@ -462,6 +508,39 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
                   className="flex-1 w-full bg-[#0d0d0d] text-emerald-400 font-mono text-sm p-4 focus:outline-none resize-none"
                   placeholder="El código aparecerá aquí..."
                 />
+              </div>
+
+              {/* PANEL IA */}
+              <div className="w-80 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col overflow-hidden flex-shrink-0">
+                <div className="bg-zinc-950 px-4 py-3 border-b border-zinc-800">
+                  <h3 className="text-sm font-bold text-cyan-400 flex items-center gap-2"><span>🤖</span> Asistente de Código IA</h3>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">La IA leerá el archivo actual y hará las modificaciones que le pidas.</p>
+                </div>
+                <div className="flex-1 p-4 flex flex-col justify-end bg-zinc-900/30">
+                  <div className="flex-1 text-xs text-zinc-500 mb-4 flex flex-col justify-center items-center text-center opacity-50 px-4">
+                    <span>⚡</span>
+                    <p className="mt-2">Pídele que cambie colores, textos, mueva secciones o agregue código nuevo.</p>
+                  </div>
+                  <textarea
+                    value={aiInstruction}
+                    onChange={(e) => setAiInstruction(e.target.value)}
+                    disabled={!activeFile || aiProcessing}
+                    placeholder={activeFile ? "Ej: Cambia el título principal a color rojo vibrante..." : "Selecciona un archivo primero para hablar con la IA..."}
+                    className="w-full h-28 bg-black text-zinc-300 text-sm p-3 border border-zinc-800 rounded-lg focus:outline-none focus:border-cyan-500 resize-none mb-3"
+                  />
+                  <button
+                    onClick={handleAIAssist}
+                    disabled={!activeFile || !aiInstruction.trim() || aiProcessing}
+                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-black font-extrabold py-3 rounded-lg disabled:opacity-50 flex justify-center items-center gap-2 transition-opacity hover:opacity-90 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                  >
+                    {aiProcessing ? (
+                      <><span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span> Escribiendo código...</>
+                    ) : (
+                      <>✨ Aplicar Ajuste con IA</>
+                    )}
+                  </button>
+                  <p className="text-[9px] text-center text-zinc-600 mt-2">La IA reemplazará el código en el editor automáticamente. ¡Recuerda darle a Guardar Cambios!</p>
+                </div>
               </div>
             </div>
           )}
