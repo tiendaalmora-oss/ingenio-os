@@ -3,10 +3,6 @@ import { supabase } from "@/lib/db/supabase";
 import fs from "fs";
 import path from "path";
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const rawModel = process.env.OPENROUTER_MODEL || "";
-const DEFAULT_MODEL = rawModel.trim().replace(/\.+$/, "") || "deepseek/deepseek-chat";
-
 // Helper to create clean slugs
 const generateSlug = (text: string) => {
   return text
@@ -14,6 +10,8 @@ const generateSlug = (text: string) => {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "");
 };
+
+import { invokeCognitiveEngine } from "@/lib/ai/orchestrator";
 
 async function generateAiCreativeLanding(
   templateHtml: string,
@@ -50,44 +48,17 @@ REGLAS DE DISEÑO Y ESTRUCTURA (EL ADN):
 6. REEMPLAZA todos los iconos genéricos por iconos SVG limpios e inline que tengan relación lógica con cada sección (ej: si hablas de dinero usa un icono de billete SVG, si hablas de tiempo usa un reloj SVG, si hablas de orden usa una carpeta SVG).
 7. REEMPLAZA las imágenes por URLs de Unsplash con keywords del nicho en la URL, asegurando que tengan una visualización estética (ej: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80').
 8. ENLAZA todos los botones de compra (CTA) con el enlace de checkout: '${checkoutUrl || ""}'.
-9. CRÍTICO: DEBES DEVOLVER EL CÓDIGO COMPLETO SIN CORTARLO. Asegúrate de llegar hasta la etiqueta </html> final, sin importar qué tan largo sea. No uses placeholders ni omitas partes del código.
 
 Devuelve ÚNICAMENTE el código HTML completo y finalizado. NO incluyas explicaciones ni bloques de formato markdown como \`\`\`html. Devuelve directamente el código desde la etiqueta <!DOCTYPE html>.`;
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY || ""}`,
-      "HTTP-Referer": "https://os.ingeniodigital.shop",
-      "X-Title": "Ingenio OS Creative Engine",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "deepseek/deepseek-chat",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Aplica la reestructuración y re-estilizado completo a esta plantilla HTML base:\n\n${templateHtml}` }
-      ],
-      temperature: 0.4,
-      max_tokens: 8000,
-    }),
+  return await invokeCognitiveEngine({
+    taskType: 'HEAVY_CODE',
+    format: 'html',
+    systemPrompt,
+    userPrompt: `Aplica la reestructuración y re-estilizado completo a esta plantilla HTML base:\n\n${templateHtml}`,
+    maxTokens: 8000,
+    temperature: 0.4
   });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`AI generation failed: ${response.status} - ${err}`);
-  }
-
-  const data = await response.json();
-  let code = data.choices?.[0]?.message?.content || "";
-  
-  code = code.trim();
-  if (code.startsWith("```html")) {
-    code = code.replace(/^```html/, "").replace(/```$/, "").trim();
-  } else if (code.startsWith("```")) {
-    code = code.replace(/^```/, "").replace(/```$/, "").trim();
-  }
-  return code;
 }
 
 export async function POST(req: Request) {
@@ -323,10 +294,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // 5. Generar 3 Conceptos Creativos y Scripts mediante IA (DeepSeek)
-    if (OPENROUTER_API_KEY) {
-      try {
-        const aiPrompt = `Estás lanzando una campaña de anuncios en Meta para validar un nuevo producto digital.
+    // 5. Generar 3 Conceptos Creativos y Scripts mediante IA (Cognitive Orchestrator)
+    try {
+      const aiPrompt = `Estás lanzando una campaña de anuncios en Meta para validar un nuevo producto digital.
 Producto: "${title}"
 Nicho: "${niche}"
 Oferta irresistible: "${offer}"
@@ -360,34 +330,14 @@ La respuesta debe ser obligatoriamente un objeto JSON con la estructura:
   ]
 }
 Responde únicamente con el JSON válido.`;
-
-        const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-            "HTTP-Referer": "https://os.ingeniodigital.shop",
-            "X-Title": "Ingenio OS",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: DEFAULT_MODEL,
-            response_format: { type: "json_object" },
-            messages: [{ role: "user", content: aiPrompt }],
-            temperature: 0.8,
-            max_tokens: 2500,
-          }),
-        });
-
-        if (aiResponse.ok) {
-          const aiData = await aiResponse.json();
-          let content = aiData.choices?.[0]?.message?.content || "{}";
-          
-          content = content.trim();
-          if (content.startsWith("```json")) {
-            content = content.replace(/^```json/, "").replace(/```$/, "").trim();
-          } else if (content.startsWith("```")) {
-            content = content.replace(/^```/, "").replace(/```$/, "").trim();
-          }
+        const content = await invokeCognitiveEngine({
+            taskType: 'COPYWRITING',
+            format: 'json',
+            systemPrompt: 'Eres un estratega de conversión experto. Devuelve únicamente el JSON válido.',
+            userPrompt: aiPrompt,
+            maxTokens: 2500,
+            temperature: 0.8
+          });
 
           const parsed = JSON.parse(content);
 
@@ -432,10 +382,8 @@ Responde únicamente con el JSON válido.`;
               }
             }
           }
-        }
-      } catch (err: any) {
-        console.error("Error generating AI creatives during approval:", err.message);
-      }
+    } catch (err: any) {
+      console.error("Error generating AI creatives during approval:", err.message);
     }
 
     // 6. Crear checklist operacional básica en product_tasks

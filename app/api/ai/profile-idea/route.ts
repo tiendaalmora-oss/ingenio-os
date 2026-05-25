@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const rawModel = process.env.OPENROUTER_MODEL || "";
-const DEFAULT_MODEL = rawModel.trim().replace(/\.+$/, "") || "deepseek/deepseek-chat";
+import { invokeCognitiveEngine } from "@/lib/ai/orchestrator";
 
 export async function POST(req: Request) {
   try {
@@ -12,13 +10,6 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { success: false, error: "Título y Nicho son obligatorios" },
         { status: 400 }
-      );
-    }
-
-    if (!OPENROUTER_API_KEY) {
-      return NextResponse.json(
-        { success: false, error: "OPENROUTER_API_KEY no configurada en el servidor" },
-        { status: 500 }
       );
     }
 
@@ -71,44 +62,14 @@ Responde únicamente con el objeto JSON válido. No agregues texto adicional ant
 
     const userPrompt = `Idea: "${title}"\nNicho: "${niche}"`;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://os.ingeniodigital.shop",
-        "X-Title": "Ingenio OS",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-      }),
+    const content = await invokeCognitiveEngine({
+      taskType: 'DATA_EXTRACTION',
+      format: 'json',
+      systemPrompt,
+      userPrompt,
+      maxTokens: 2000,
+      temperature: 0.7
     });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Error de OpenRouter: ${response.status} - ${errText}`);
-    }
-
-    const data = await response.json();
-    let content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error("La IA devolvió una respuesta vacía.");
-    }
-
-    content = content.trim();
-    if (content.startsWith("```json")) {
-      content = content.replace(/^```json/, "").replace(/```$/, "").trim();
-    } else if (content.startsWith("```")) {
-      content = content.replace(/^```/, "").replace(/```$/, "").trim();
-    }
 
     const profileData = JSON.parse(content);
     return NextResponse.json({ success: true, profile: profileData });

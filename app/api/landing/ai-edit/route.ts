@@ -3,8 +3,7 @@ import { supabase } from "@/lib/db/supabase";
 import fs from "fs";
 import path from "path";
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const DEFAULT_MODEL = "deepseek/deepseek-chat"; // Forzado para buena relación costo/calidad en código
+import { invokeCognitiveEngine } from "@/lib/ai/orchestrator";
 
 export async function POST(req: Request) {
   try {
@@ -47,44 +46,18 @@ REGLAS DE EDICIÓN:
 1. DEBES MANTENER LA ESTRUCTURA PRINCIPAL (ADN). No elimines secciones completas a menos que el usuario lo pida explícitamente.
 2. Aplica los cambios estéticos (colores, sombras, bordes, tipografías) modificando el bloque <style> o las variables CSS.
 3. Si el usuario pide cambios de contenido ("hacerlo más agresivo", "cambiar el hero"), reescribe el texto (copywriting) manteniendo la persuasión y conversión.
-4. Devuelve ÚNICAMENTE el nuevo código HTML completo, desde <!DOCTYPE html> hasta </html>. NO agregues explicaciones.
-5. CRÍTICO: DEBES DEVOLVER EL CÓDIGO COMPLETO SIN CORTARLO. Asegúrate de llegar hasta la etiqueta </html> final, sin importar qué tan largo sea. No uses placeholders ni omitas partes del código.`;
+4. Devuelve ÚNICAMENTE el nuevo código HTML completo, desde <!DOCTYPE html> hasta </html>. NO agregues explicaciones.`;
 
     console.log(`🤖 Iniciando edición IA para variante ${variantId} con prompt: "${prompt}"`);
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://os.ingeniodigital.shop",
-        "X-Title": "Ingenio OS Creative Engine",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Código HTML actual:\n\n${currentHtml}\n\nRequerimiento del usuario: ${prompt}\n\nAplica los cambios y devuelve el nuevo HTML completo.` }
-        ],
-        temperature: 0.4,
-        max_tokens: 8000,
-      }),
+    const newHtml = await invokeCognitiveEngine({
+      taskType: 'HEAVY_CODE',
+      format: 'html',
+      systemPrompt,
+      userPrompt: `Código HTML actual:\n\n${currentHtml}\n\nRequerimiento del usuario: ${prompt}\n\nAplica los cambios y devuelve el nuevo HTML completo.`,
+      maxTokens: 8000,
+      temperature: 0.4
     });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`AI generation failed: ${response.status} - ${err}`);
-    }
-
-    const data = await response.json();
-    let newHtml = data.choices?.[0]?.message?.content || "";
-    
-    newHtml = newHtml.trim();
-    if (newHtml.startsWith("```html")) {
-      newHtml = newHtml.replace(/^```html/, "").replace(/```$/, "").trim();
-    } else if (newHtml.startsWith("```")) {
-      newHtml = newHtml.replace(/^```/, "").replace(/```$/, "").trim();
-    }
 
     // 3. Guardar el nuevo Draft
     await supabase
