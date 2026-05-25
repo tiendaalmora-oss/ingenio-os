@@ -134,6 +134,15 @@ export function LandingFactoryModule() {
                 <span className="font-medium">Plantilla Personalizada por IA</span>
                 <span className="text-xs mt-2">Genera un diseño único a partir de una descripción</span>
               </div>
+              <div 
+                onClick={() => window.location.href = '/os/landing/builder'}
+                className="border-2 border-dashed border-zinc-850 bg-zinc-900/30 rounded-xl flex flex-col items-center justify-center text-center p-8 text-zinc-400 hover:border-cyan-700 hover:text-cyan-400 hover:bg-cyan-950/20 transition-all cursor-pointer relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <span className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-300">👨‍💻</span>
+                <span className="font-bold text-lg">Crear desde Cero (HTML)</span>
+                <span className="text-xs mt-2 text-zinc-500 group-hover:text-cyan-200/60 max-w-[80%]">Editor manual con previsualización en vivo. Ideal para migrar campañas existentes o pegar código de otros editores.</span>
+              </div>
             </div>
           </div>
         </>
