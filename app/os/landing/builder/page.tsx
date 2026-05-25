@@ -10,17 +10,39 @@ export default function LandingBuilderPage() {
   const [historyIndex, setHistoryIndex] = useState<number>(0);
 
   // Load existing HTML from slug if present
+  const [variantId, setVariantId] = useState<string | null>(null);
+  const [products, setProducts] = useState<any[]>([]);
+
   useEffect(() => {
-    const urlSlug = new URLSearchParams(window.location.search).get("slug");
-    if (urlSlug) {
-      setSlug(urlSlug);
-      fetch(`/api/landing/manual-publish?slug=${urlSlug}`)
+    // Cargar proyectos disponibles para el dropdown
+    fetch("/api/products")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setProducts(data.products || []);
+      })
+      .catch(err => console.error("Error loading products:", err));
+
+    const params = new URLSearchParams(window.location.search);
+    const urlSlug = params.get("slug");
+    const vId = params.get("variantId");
+
+    let fetchUrl = "";
+    if (vId) {
+      setVariantId(vId);
+      fetchUrl = `/api/landing/manual-publish?variantId=${vId}`;
+    } else if (urlSlug) {
+      fetchUrl = `/api/landing/manual-publish?slug=${urlSlug}`;
+    }
+
+    if (fetchUrl) {
+      fetch(fetchUrl)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.html) {
             setCode(data.html);
             setHistory([data.html]);
             setHistoryIndex(0);
+            if (data.slug) setSlug(data.slug);
           }
         })
         .catch(err => console.error("Error loading HTML:", err));
@@ -185,7 +207,11 @@ export default function LandingBuilderPage() {
       const res = await fetch("/api/landing/manual-publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: slug.trim(), html: code })
+        body: JSON.stringify({ 
+          slug: slug.trim(), 
+          html: code,
+          variantId: variantId 
+        })
       });
       const data = await res.json();
 
@@ -261,12 +287,17 @@ export default function LandingBuilderPage() {
           <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
             <span className="px-3 text-zinc-500 text-sm">/</span>
             <input 
+              list="products-list"
               type="text" 
               placeholder="tu-slug"
               value={slug}
+              disabled={!!variantId}
               onChange={(e) => setSlug(e.target.value)}
-              className="bg-transparent border-none text-sm outline-none w-32 px-2 py-1.5 text-cyan-400 placeholder:text-zinc-600"
+              className="bg-transparent border-none text-sm outline-none w-32 px-2 py-1.5 text-cyan-400 placeholder:text-zinc-600 disabled:opacity-50"
             />
+            <datalist id="products-list">
+              {products.map(p => <option key={p.id} value={p.slug}>{p.name}</option>)}
+            </datalist>
           </div>
           <button 
             onClick={handlePublish}

@@ -124,6 +124,7 @@ export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
+    const slug = searchParams.get("slug");
 
     if (!id) {
       return NextResponse.json({ success: false, error: "El ID del producto es obligatorio" }, { status: 400 });
@@ -135,8 +136,19 @@ export async function DELETE(req: Request) {
       .eq("id", id);
 
     if (error) throw error;
+
+    // Eliminar también la carpeta física si existe
+    if (slug) {
+      const fs = require("fs");
+      const path = require("path");
+      const legacyDir = path.join(process.cwd(), "public", "legacy", slug);
+      if (fs.existsSync(legacyDir)) {
+        fs.rmSync(legacyDir, { recursive: true, force: true });
+      }
+    }
+
     return NextResponse.json({ success: true, message: "Producto eliminado correctamente" });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

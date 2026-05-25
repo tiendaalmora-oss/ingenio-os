@@ -8,6 +8,7 @@ import {
   updateVariantConfig, 
   toggleMainVariant, 
   deleteVariant,
+  duplicateVariant,
   updateProductDetails,
   updateProductManual 
 } from "./actions";
@@ -598,6 +599,25 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
                         <button onClick={() => setActiveTab('codigo')} className="text-xs bg-zinc-800 text-zinc-300 hover:bg-zinc-700 px-3 py-1.5 rounded flex items-center justify-center gap-2 transition-colors">
                           <span>💻</span> Código
                         </button>
+                        <a href={`/os/landing/builder?variantId=${v.id}`} className="text-xs bg-cyan-900/30 text-cyan-400 hover:bg-cyan-900/50 font-bold px-3 py-1.5 rounded flex items-center justify-center gap-2 transition-colors border border-cyan-500/20">
+                          <span>🎨</span> Canvas Manual
+                        </a>
+                        <div className="flex gap-2 w-full mt-2">
+                          <button onClick={async () => {
+                            await duplicateVariant(v.id, slug);
+                            window.location.reload();
+                          }} className="flex-1 text-xs bg-zinc-800 text-zinc-300 hover:bg-zinc-700 px-3 py-1.5 rounded flex items-center justify-center gap-1.5 transition-colors">
+                            <span>📋</span> Clonar
+                          </button>
+                          <button onClick={async () => {
+                            if (confirm("¿Estás seguro que deseas eliminar esta variante?")) {
+                              await deleteVariant(v.id, slug);
+                              window.location.reload();
+                            }
+                          }} className="flex-1 text-xs bg-red-900/20 text-red-400 hover:bg-red-900/40 px-3 py-1.5 rounded flex items-center justify-center gap-1.5 transition-colors border border-red-500/20">
+                            <span>🗑️</span> Eliminar
+                          </button>
+                        </div>
                         {!v.is_main && (
                           <button onClick={() => toggleMainVariant(v.id, slug)} className="text-xs bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded transition-colors">
                             ⭐ Hacer Principal

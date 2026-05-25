@@ -135,6 +135,36 @@ export async function deleteVariant(id: string, slug: string) {
   revalidatePath(`/os/landing/${slug}`);
 }
 
+export async function duplicateVariant(id: string, slug: string) {
+  const { data: originalVariant } = await supabase.from('landing_variants').select('*').eq('id', id).single();
+  if (!originalVariant) return;
+
+  const { id: _, created_at: __, ...variantData } = originalVariant;
+  const newFolderSlug = originalVariant.config?.folder ? `${originalVariant.config.folder}-copy-${Math.floor(Math.random() * 1000)}` : `copy-${Math.floor(Math.random() * 1000)}`;
+  
+  variantData.name = `${variantData.name} (Copia)`;
+  variantData.is_main = false;
+  variantData.config = { ...variantData.config, folder: newFolderSlug };
+
+  await supabase.from('landing_variants').insert([variantData]);
+
+  // Si existe en fisico, copiar
+  if (originalVariant.config?.folder) {
+    const sourceDir = path.join(process.cwd(), 'public', 'legacy', slug, originalVariant.config.folder);
+    const targetDir = path.join(process.cwd(), 'public', 'legacy', slug, newFolderSlug);
+    if (fs.existsSync(sourceDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+      const files = fs.readdirSync(sourceDir);
+      for (const file of files) {
+        fs.copyFileSync(path.join(sourceDir, file), path.join(targetDir, file));
+      }
+    }
+  }
+
+  await logEvent('landing_variant_duplicated', slug, { original_id: id });
+  revalidatePath(`/os/landing/${slug}`);
+}
+
 export async function updateProductDetails(slug: string, price: number, checkoutUrl: string, status: string) {
   try {
     await supabase.from('products').update({ price, checkout_url: checkoutUrl, status }).eq('slug', slug);

@@ -5,7 +5,7 @@ import path from "path";
 
 export async function POST(req: Request) {
   try {
-    const { slug, html } = await req.json();
+    const { slug, html, variantId } = await req.json();
 
     if (!slug || !html) {
       return NextResponse.json(
@@ -49,19 +49,32 @@ export async function POST(req: Request) {
       productId = newProduct.id;
     }
 
-    // 3. Crear variante de backup para la UI
-    const { error: varErr } = await supabase
-      .from("landing_variants")
-      .insert({
-        product_slug: cleanSlug,
-        name: `Manual Canvas ${new Date().toISOString().split("T")[0]}`,
-        published_html: html,
-        draft_html: html,
-        status: "PUBLISHED"
-      });
+    // 3. Crear o Actualizar Variante
+    if (variantId) {
+      const { error: updateErr } = await supabase
+        .from("landing_variants")
+        .update({
+          published_html: html,
+          draft_html: html,
+          status: "PUBLISHED"
+        })
+        .eq("id", variantId);
+        
+      if (updateErr) console.warn("No se pudo actualizar variante:", updateErr.message);
+    } else {
+      const { error: varErr } = await supabase
+        .from("landing_variants")
+        .insert({
+          product_slug: cleanSlug,
+          name: `Manual Canvas ${new Date().toISOString().split("T")[0]}`,
+          published_html: html,
+          draft_html: html,
+          status: "PUBLISHED"
+        });
 
-    if (varErr) {
-      console.warn("No se pudo crear el backup en DB, pero procederemos a publicar el físico.", varErr.message);
+      if (varErr) {
+        console.warn("No se pudo crear el backup en DB, pero procederemos a publicar el físico.", varErr.message);
+      }
     }
 
     // 4. Escribir en el File System Legacy
@@ -88,9 +101,28 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const slug = searchParams.get('slug');
+    const variantId = searchParams.get('variantId');
+
+    if (variantId) {
+      const { data: variant, error } = await supabase
+        .from("landing_variants")
+        .select("draft_html, product_slug")
+        .eq("id", variantId)
+        .single();
+      
+      if (error || !variant) {
+        return NextResponse.json({ success: false, error: "Variante no encontrada" }, { status: 404 });
+      }
+      
+      return NextResponse.json({ 
+        success: true, 
+        html: variant.draft_html || "", 
+        slug: variant.product_slug 
+      });
+    }
 
     if (!slug) {
-      return NextResponse.json({ success: false, error: "Slug requerido" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "Slug o variantId requerido" }, { status: 400 });
     }
 
     const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
@@ -101,7 +133,7 @@ export async function GET(req: Request) {
     }
 
     const html = fs.readFileSync(filePath, "utf8");
-    return NextResponse.json({ success: true, html });
+    return NextResponse.json({ success: true, html, slug: cleanSlug });
   } catch (err: unknown) {
     return NextResponse.json(
       { success: false, error: err instanceof Error ? err.message : "Error al cargar HTML." },

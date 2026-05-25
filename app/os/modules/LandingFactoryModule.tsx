@@ -25,10 +25,39 @@ export function LandingFactoryModule() {
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Error al cargar productos");
       setProducts(data.products || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteProduct = async (id: string, slug: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`¿Estás seguro que deseas eliminar el producto ${slug} y todo su contenido?`)) return;
+    try {
+      const res = await fetch(`/api/products?id=${id}&slug=${slug}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      await fetchProducts();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleDuplicateProduct = async (id: string, slug: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/products/duplicate`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, slug })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      await fetchProducts();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -85,9 +114,13 @@ export function LandingFactoryModule() {
                     
                     <div className="flex justify-between items-start mb-4">
                       <div className="text-4xl group-hover:scale-110 transition-transform duration-200">📁</div>
-                      <span className="text-[10px] font-extrabold uppercase bg-zinc-950 border border-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
-                        {product.status || 'Active'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-extrabold uppercase bg-zinc-950 border border-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                          {product.status || 'Active'}
+                        </span>
+                        <button onClick={(e) => handleDuplicateProduct(product.id, product.slug, e)} className="text-zinc-500 hover:text-white" title="Duplicar">📋</button>
+                        <button onClick={(e) => handleDeleteProduct(product.id, product.slug, e)} className="text-zinc-500 hover:text-red-500" title="Eliminar">🗑️</button>
+                      </div>
                     </div>
 
                     <div>
