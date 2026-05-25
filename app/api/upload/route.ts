@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       message: 'Archivo subido con éxito',
-      url: `/assets/${slug}/${folder}/${file.name}`
+      url: `/api/media/${slug}/${folder}/${file.name}`
     });
   } catch (err: unknown) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     }
 
     const files = fs.readdirSync(targetDir);
-    const urls = files.map(file => `/assets/${slug}/${folder}/${file}`);
+    const urls = files.map(file => `/api/media/${slug}/${folder}/${file}`);
 
     return NextResponse.json({ success: true, files: urls });
   } catch (err: unknown) {
