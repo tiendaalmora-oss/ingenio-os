@@ -1,44 +1,16 @@
-export type TaskType = 'HEAVY_CODE' | 'COPYWRITING' | 'DATA_EXTRACTION' | 'QUICK_FIX';
+import { 
+  CognitiveEngineOptions, 
+  TaskType, 
+  StructuredLog, 
+  CognitiveTelemetry, 
+  ProviderType 
+} from './types';
+import { ROUTING_TABLE, ValidModelId } from './models';
 
-export type CognitivePriority = 'speed' | 'quality' | 'cost';
-
-export interface CognitiveEngineOptions {
-  taskType: TaskType;
-  priority?: CognitivePriority;
-  systemPrompt: string;
-  userPrompt: string;
-  maxTokens?: number;
-  temperature?: number;
-  format?: 'json' | 'text' | 'html';
-}
-
-// ------------------------------------------------------------------
-// Enrutamiento cognitivo: ¿Qué modelos usamos para qué?
-// ------------------------------------------------------------------
-const ROUTING_TABLE: Record<TaskType, string[]> = {
-  // Heavy Code: Priorizamos razonamiento profundo y ventanas grandes.
-  HEAVY_CODE: [
-    "anthropic/claude-3.5-sonnet", // The best for heavy code
-    "deepseek/deepseek-chat",      // Cheaper and highly capable fallback
-    "google/gemini-1.5-pro"        // 8k output native fallback
-  ],
-  // Copywriting: Textos emocionales, creativos, humanos.
-  COPYWRITING: [
-    "openai/gpt-4o-mini",          // Excellent text nuances
-    "google/gemini-1.5-flash",     // Very fast text generation
-    "anthropic/claude-3-haiku"     // Fast and human-like
-  ],
-  // Data Extraction: Parsing, JSON structuration, categorizing.
-  DATA_EXTRACTION: [
-    "google/gemini-1.5-flash",     // Fast and structured
-    "openai/gpt-4o-mini"           // Reliable JSON output
-  ],
-  // Quick Fixes: Pequeñas modificaciones, CSS, scripts rápidos.
-  QUICK_FIX: [
-    "deepseek/deepseek-chat",      // Coding capable but fast
-    "google/gemini-1.5-flash"
-  ]
-};
+/**
+ * Genera un ID único para la telemetría de cada tarea
+ */
+const generateTaskId = () => `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 /**
  * Limpia la respuesta en caso de que los LLMs agreguen markdown (```json o ```html)
@@ -62,20 +34,36 @@ function sanitizeResponse(content: string, format: 'json' | 'text' | 'html'): st
 }
 
 /**
- * Cognitive Gateway Principal
- * El resto de la app llama a este endpoint interno y se desliga del proveedor.
+ * Sistema de Logging Estructurado (Base para futura BD de telemetría)
+ */
+function logTelemetry(telemetry: CognitiveTelemetry) {
+  const { log } = telemetry;
+  const icon = log.status === 'SUCCESS' ? '✅' : (log.status === 'PARTIAL_FAILURE' ? '⚠️' : '❌');
+  console.log(`${icon} [Orchestrator] Task ${log.taskId} | ${log.taskType} | ${log.modelUsed} | ${log.latencyMs.toFixed(0)}ms | Fallbacks: ${log.fallbackCount}`);
+  if (log.errorDetail) {
+    console.warn(`   ↳ Info: ${log.errorDetail}`);
+  }
+  // TODO: Insertar log en base de datos (Ej: tabla 'ai_telemetry' en Supabase) para el Health Scoring
+}
+
+/**
+ * Cognitive Gateway Principal con Smart Retry Loop
+ * Abstrae a los Providers y maneja el fallback programáticamente.
  */
 export async function invokeCognitiveEngine(options: CognitiveEngineOptions): Promise<string> {
-  // TODO: En un futuro, aquí podríamos agregar lógica para desviar a un proveedor local (Ollama)
-  // si un flag process.env.USE_LOCAL_LLM está encendido.
-  
+  const taskId = generateTaskId();
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
+  
   if (!OPENROUTER_API_KEY) {
     throw new Error("El Orquestador no encontró la clave de OpenRouter (OPENROUTER_API_KEY).");
   }
 
   // 1. Obtener la ruta de modelos según el tipo de tarea
-  let modelRoute = ROUTING_TABLE[options.taskType];
+  const modelRoute: ValidModelId[] = ROUTING_TABLE[options.taskType];
+  
+  if (!modelRoute || modelRoute.length === 0) {
+    throw new Error(`[Orchestrator] No hay modelos configurados para la tarea ${options.taskType}`);
+  }
 
   // 2. Ajustes de seguridad por formato
   let internalSystemPrompt = options.systemPrompt;
@@ -86,44 +74,98 @@ export async function invokeCognitiveEngine(options: CognitiveEngineOptions): Pr
     internalSystemPrompt += `\n\nCRÍTICO: Devuelve ÚNICAMENTE un JSON válido. Sin explicaciones previas ni posteriores.`;
   }
 
-  // 3. Configurar petición al proveedor principal (Actualmente OpenRouter con Auto-Fallback)
-  // OpenRouter permite enviar un array "models" y procesará la petición en cascada si el primero falla (Rate limit, Down, etc).
-  const payload = {
-    models: modelRoute,
-    route: "fallback", // Habilita el fallback nativo inteligente
-    messages: [
-      { role: "system", content: internalSystemPrompt },
-      { role: "user", content: options.userPrompt }
-    ],
-    temperature: options.temperature ?? 0.5,
-    max_tokens: options.maxTokens ?? 8000,
-  };
+  let fallbackCount = 0;
+  let lastError = "";
 
-  console.log(`🧠 [Orchestrator] Lanzando tarea: ${options.taskType} | Format: ${options.format || 'text'}`);
-  console.log(`🛤️ [Orchestrator] Routing: ${modelRoute.join(" -> ")}`);
+  // 3. Smart Retry Loop (Fallback Programático)
+  for (let i = 0; i < modelRoute.length; i++) {
+    const currentModel = modelRoute[i];
+    const startTime = performance.now();
+    
+    try {
+      console.log(`🧠 [Orchestrator] Lanzando tarea: ${options.taskType} | Intentando modelo: ${currentModel} (Intento ${i + 1}/${modelRoute.length})`);
+      
+      const payload = {
+        model: currentModel,
+        messages: [
+          { role: "system", content: internalSystemPrompt },
+          { role: "user", content: options.userPrompt }
+        ],
+        temperature: options.temperature ?? 0.5,
+        max_tokens: options.maxTokens ?? 8000,
+      };
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-      "HTTP-Referer": "https://os.ingeniodigital.shop",
-      "X-Title": "Ingenio OS Cognitive Engine",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+      // TODO: En el futuro, si currentModel es de Ollama (ej. "ollama/llama3"), 
+      // hacer fetch a http://localhost:11434 en su lugar mediante un Provider Abstraction.
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "https://os.ingeniodigital.shop",
+          "X-Title": "Ingenio OS Cognitive Engine",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("❌ [Orchestrator] Falla crítica en todos los modelos de la ruta:", errorText);
-    throw new Error(`Orchestrator Exception: ${response.status} - ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      const rawContent = data.choices?.[0]?.message?.content || "";
+      const latency = performance.now() - startTime;
+      const tokens = data.usage?.total_tokens || 0;
+
+      const telemetry: CognitiveTelemetry = {
+        log: {
+          taskId,
+          taskType: options.taskType,
+          provider: 'openrouter',
+          modelUsed: data.model || currentModel,
+          latencyMs: latency,
+          tokensUsed: tokens,
+          fallbackCount,
+          status: fallbackCount > 0 ? 'PARTIAL_FAILURE' : 'SUCCESS',
+          timestamp: new Date().toISOString()
+        },
+        rawResponse: data
+      };
+      logTelemetry(telemetry);
+
+      // 4. Limpieza centralizada de salida
+      return sanitizeResponse(rawContent, options.format || 'text');
+
+    } catch (error: any) {
+      const latency = performance.now() - startTime;
+      lastError = error.message;
+      fallbackCount++;
+      
+      console.warn(`⚠️ [Orchestrator] Falló modelo '${currentModel}' tras ${latency.toFixed(0)}ms: ${lastError}`);
+      
+      // Si quedan más modelos en la lista, el loop continuará con el siguiente.
+      if (i < modelRoute.length - 1) {
+        console.log(`🔄 [Orchestrator] Activando fallback programático -> Intentando con: ${modelRoute[i + 1]}`);
+      }
+    }
   }
 
-  const data = await response.json();
-  const rawContent = data.choices?.[0]?.message?.content || "";
-
-  // 4. Limpieza centralizada de salida
-  const finalContent = sanitizeResponse(rawContent, options.format || 'text');
+  // 5. Si el bucle termina y todos fallaron, lanzamos Critical Failure
+  const finalTelemetry: CognitiveTelemetry = {
+    log: {
+      taskId,
+      taskType: options.taskType,
+      provider: 'openrouter',
+      modelUsed: 'ALL_FAILED',
+      latencyMs: 0,
+      fallbackCount,
+      status: 'CRITICAL_FAILURE',
+      errorDetail: lastError,
+      timestamp: new Date().toISOString()
+    }
+  };
+  logTelemetry(finalTelemetry);
   
-  return finalContent;
+  throw new Error(`[Orchestrator] Todos los modelos en la ruta fallaron. Último error: ${lastError}`);
 }
