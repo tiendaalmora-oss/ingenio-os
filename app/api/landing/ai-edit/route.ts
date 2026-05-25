@@ -50,7 +50,7 @@ REGLAS DE EDICIÓN:
 
     console.log(`🤖 Iniciando edición IA para variante ${variantId} con prompt: "${prompt}"`);
 
-    const newHtml = await invokeCognitiveEngine({
+    let newHtml = await invokeCognitiveEngine({
       taskType: 'HEAVY_CODE',
       format: 'html',
       systemPrompt,
@@ -58,6 +58,15 @@ REGLAS DE EDICIÓN:
       maxTokens: 8000,
       temperature: 0.4
     });
+
+    // Limpiar artefactos de la IA (markdown, bash tags, etc.)
+    const htmlMatch = newHtml.match(/(<!DOCTYPE html>[\s\S]*<\/html>)/i);
+    if (htmlMatch) {
+      newHtml = htmlMatch[1];
+    } else {
+      // Fallback básico de limpieza de markdown por si no tiene doctype
+      newHtml = newHtml.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/i, '').trim();
+    }
 
     // 3. Guardar el nuevo Draft
     await supabase
