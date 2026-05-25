@@ -39,7 +39,28 @@ export async function POST(req: NextRequest) {
       message: 'Archivo subido con éxito',
       url: `/assets/${slug}/${folder}/${file.name}`
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const slug = searchParams.get('slug') || 'manual_uploads';
+    const folder = searchParams.get('folder') || 'images';
+
+    const targetDir = path.join(process.cwd(), 'public', 'assets', slug, folder);
+
+    if (!fs.existsSync(targetDir)) {
+      return NextResponse.json({ success: true, files: [] });
+    }
+
+    const files = fs.readdirSync(targetDir);
+    const urls = files.map(file => `/assets/${slug}/${folder}/${file}`);
+
+    return NextResponse.json({ success: true, files: urls });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
