@@ -10,6 +10,7 @@ interface Product {
   sections: string[];
   deployment_domain?: string;
   status?: string;
+  type?: string;
 }
 
 export function LandingFactoryModule() {
@@ -71,7 +72,13 @@ export function LandingFactoryModule() {
                 return (
                   <div 
                     key={product.id} 
-                    onClick={() => window.location.href = `/os/landing/${product.slug}`}
+                    onClick={() => {
+                      if (product.type === "Landing Manual") {
+                        window.location.href = `/os/landing/builder?slug=${product.slug}`;
+                      } else {
+                        window.location.href = `/os/landing/${product.slug}`;
+                      }
+                    }}
                     className="bg-zinc-900/40 border border-zinc-800/80 p-6 rounded-2xl flex flex-col justify-between hover:border-cyan-500/30 hover:bg-zinc-900 transition-all cursor-pointer relative group overflow-hidden"
                   >
                     <div className="absolute top-0 left-0 w-full h-[2px]" style={{ backgroundColor: product.color }}></div>

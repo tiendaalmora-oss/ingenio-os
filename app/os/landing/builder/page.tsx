@@ -8,6 +8,24 @@ export default function LandingBuilderPage() {
   // Undo/Redo State
   const [history, setHistory] = useState<string[]>([code]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
+
+  // Load existing HTML from slug if present
+  useEffect(() => {
+    const urlSlug = new URLSearchParams(window.location.search).get("slug");
+    if (urlSlug) {
+      setSlug(urlSlug);
+      fetch(`/api/landing/manual-publish?slug=${urlSlug}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.html) {
+            setCode(data.html);
+            setHistory([data.html]);
+            setHistoryIndex(0);
+          }
+        })
+        .catch(err => console.error("Error loading HTML:", err));
+    }
+  }, []);
   
   const [slug, setSlug] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
@@ -255,7 +273,7 @@ export default function LandingBuilderPage() {
             disabled={isPublishing}
             className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold px-4 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50"
           >
-            {isPublishing ? 'Publicando...' : 'Publicar 🚀'}
+            {isPublishing ? 'Guardando...' : 'Guardar y Publicar 🚀'}
           </button>
         </div>
       </header>

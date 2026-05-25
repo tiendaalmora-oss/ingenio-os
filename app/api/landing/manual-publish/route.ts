@@ -83,3 +83,29 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const slug = searchParams.get('slug');
+
+    if (!slug) {
+      return NextResponse.json({ success: false, error: "Slug requerido" }, { status: 400 });
+    }
+
+    const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+    const filePath = path.join(process.cwd(), "public", "legacy", cleanSlug, "landing", "index.html");
+
+    if (!fs.existsSync(filePath)) {
+      return NextResponse.json({ success: false, error: "No se encontró el HTML" }, { status: 404 });
+    }
+
+    const html = fs.readFileSync(filePath, "utf8");
+    return NextResponse.json({ success: true, html });
+  } catch (err: unknown) {
+    return NextResponse.json(
+      { success: false, error: err instanceof Error ? err.message : "Error al cargar HTML." },
+      { status: 500 }
+    );
+  }
+}
