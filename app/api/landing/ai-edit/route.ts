@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-sonnet";
+const DEFAULT_MODEL = "deepseek/deepseek-chat"; // Forzado para buena relación costo/calidad en código
 
 export async function POST(req: Request) {
   try {
