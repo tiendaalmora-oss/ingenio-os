@@ -35,7 +35,12 @@ export async function POST(req: Request) {
           name: `Landing Manual: ${cleanSlug}`,
           color: "#0ea5e9", // cyan
           sections: ["landing"],
-          status: "published"
+          status: "published",
+          type: "Landing Manual",
+          niche: "Manual",
+          price: 0,
+          checkout_url: "",
+          delivery_manual: ""
         })
         .select("id")
         .single();
@@ -49,7 +54,7 @@ export async function POST(req: Request) {
       .from("landing_variants")
       .insert({
         product_slug: cleanSlug,
-        variant_name: `Manual Canvas ${new Date().toISOString().split("T")[0]}`,
+        name: `Manual Canvas ${new Date().toISOString().split("T")[0]}`,
         published_html: html,
         draft_html: html,
         status: "PUBLISHED"
@@ -70,10 +75,10 @@ export async function POST(req: Request) {
     fs.writeFileSync(path.join(landingDir, "index.html"), html, "utf8");
 
     return NextResponse.json({ success: true, url: `/${cleanSlug}` });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Error en publicación manual:", err);
     return NextResponse.json(
-      { success: false, error: err.message || "Error interno al publicar." },
+      { success: false, error: err instanceof Error ? err.message : "Error interno al publicar." },
       { status: 500 }
     );
   }

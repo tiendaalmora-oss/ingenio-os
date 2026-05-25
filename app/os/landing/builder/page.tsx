@@ -85,8 +85,8 @@ export default function LandingBuilderPage() {
       } else {
         throw new Error(data.error || "Error al subir la imagen");
       }
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : String(err) });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -115,8 +115,8 @@ export default function LandingBuilderPage() {
       } else {
         throw new Error(data.error);
       }
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err.message });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : String(err) });
     } finally {
       setIsPublishing(false);
     }
