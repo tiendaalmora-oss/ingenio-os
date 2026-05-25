@@ -41,7 +41,8 @@ REGLAS DE DISEÑO Y ESTRUCTURA (EL ADN):
 5. REESCRIBE TODO el copywriting en español de forma extremadamente persuasiva adaptado a:
    - Nicho: ${idea.niche}
    - Avatar: ${idea.avatar}
-   - Dolores: ${Array.isArray(idea.pain_points) ? idea.pain_points.join(", ") : idea.pain_points}
+   - INYECTA EN EL CÓDIGO TODAS LAS VARIABLES PERSUASIVAS PROVISTAS EN ESTE PROMPT. Tu objetivo principal es que el nuevo diseño "hable" al avatar en su propio lenguaje.
+   - Puntos de dolor: ${Array.isArray(idea.pain_points) ? idea.pain_points.join(", ") : idea.pain_points}
    - Deseos: ${Array.isArray(idea.desires) ? idea.desires.join(", ") : idea.desires}
    - Modismos/Slang del Nicho: ${Array.isArray(creativeBrief.slang) ? creativeBrief.slang.join(", ") : creativeBrief.slang}
    - Ángulo Emocional: ${creativeBrief.emotional_hook_angle}
@@ -49,6 +50,7 @@ REGLAS DE DISEÑO Y ESTRUCTURA (EL ADN):
 6. REEMPLAZA todos los iconos genéricos por iconos SVG limpios e inline que tengan relación lógica con cada sección (ej: si hablas de dinero usa un icono de billete SVG, si hablas de tiempo usa un reloj SVG, si hablas de orden usa una carpeta SVG).
 7. REEMPLAZA las imágenes por URLs de Unsplash con keywords del nicho en la URL, asegurando que tengan una visualización estética (ej: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80').
 8. ENLAZA todos los botones de compra (CTA) con el enlace de checkout: '${checkoutUrl || ""}'.
+9. CRÍTICO: DEBES DEVOLVER EL CÓDIGO COMPLETO SIN CORTARLO. Asegúrate de llegar hasta la etiqueta </html> final, sin importar qué tan largo sea. No uses placeholders ni omitas partes del código.
 
 Devuelve ÚNICAMENTE el código HTML completo y finalizado. NO incluyas explicaciones ni bloques de formato markdown como \`\`\`html. Devuelve directamente el código desde la etiqueta <!DOCTYPE html>.`;
 
@@ -61,7 +63,7 @@ Devuelve ÚNICAMENTE el código HTML completo y finalizado. NO incluyas explicac
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: process.env.OPENROUTER_MODEL || "google/gemini-1.5-flash",
+      model: "deepseek/deepseek-chat",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Aplica la reestructuración y re-estilizado completo a esta plantilla HTML base:\n\n${templateHtml}` }
