@@ -37,7 +37,8 @@ export async function POST(req: Request) {
 
     // Escribir en el file system (producción real en la URL pública)
     const baseLegacyDir = path.join(process.cwd(), "public", "legacy", variant.product_slug);
-    const landingDir = path.join(baseLegacyDir, "landing");
+    const folderName = variant.config?.folder || "landing";
+    const landingDir = path.join(baseLegacyDir, folderName);
 
     if (!fs.existsSync(landingDir)) {
       fs.mkdirSync(landingDir, { recursive: true });

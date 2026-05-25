@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || "deepseek/deepseek-chat";
+const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-sonnet";
 
 export async function POST(req: Request) {
   try {
@@ -47,7 +47,8 @@ REGLAS DE EDICIÓN:
 1. DEBES MANTENER LA ESTRUCTURA PRINCIPAL (ADN). No elimines secciones completas a menos que el usuario lo pida explícitamente.
 2. Aplica los cambios estéticos (colores, sombras, bordes, tipografías) modificando el bloque <style> o las variables CSS.
 3. Si el usuario pide cambios de contenido ("hacerlo más agresivo", "cambiar el hero"), reescribe el texto (copywriting) manteniendo la persuasión y conversión.
-4. Devuelve ÚNICAMENTE el nuevo código HTML completo, desde <!DOCTYPE html> hasta </html>. NO agregues explicaciones.`;
+4. Devuelve ÚNICAMENTE el nuevo código HTML completo, desde <!DOCTYPE html> hasta </html>. NO agregues explicaciones.
+5. CRÍTICO: DEBES DEVOLVER EL CÓDIGO COMPLETO SIN CORTARLO. Asegúrate de llegar hasta la etiqueta </html> final, sin importar qué tan largo sea. No uses placeholders ni omitas partes del código.`;
 
     console.log(`🤖 Iniciando edición IA para variante ${variantId} con prompt: "${prompt}"`);
 
@@ -100,7 +101,8 @@ REGLAS DE EDICIÓN:
 
     // 5. Escribir draft.html físico para preview
     const baseLegacyDir = path.join(process.cwd(), "public", "legacy", variant.product_slug);
-    const landingDir = path.join(baseLegacyDir, "landing");
+    const folderName = variant.config?.folder || "landing";
+    const landingDir = path.join(baseLegacyDir, folderName);
     if (!fs.existsSync(landingDir)) {
       fs.mkdirSync(landingDir, { recursive: true });
     }

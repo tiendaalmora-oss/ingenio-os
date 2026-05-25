@@ -250,8 +250,13 @@ export async function POST(req: Request) {
           if (desires.length >= 3) htmlResult = htmlResult.replace(/Delegás el local sin perder el control/g, desires[2]);
         }
 
+        const landingDir = path.join(process.cwd(), "public", "legacy", slug, "landing");
+        if (!fs.existsSync(landingDir)) {
+          fs.mkdirSync(landingDir, { recursive: true });
+        }
         fs.writeFileSync(path.join(landingDir, "draft.html"), htmlResult, "utf8");
-
+        fs.writeFileSync(path.join(landingDir, "index.html"), htmlResult, "utf8");
+        
         if (variant?.id) {
           await supabase.from("landing_variants").update({ draft_html: htmlResult }).eq("id", variant.id);
           await supabase.from("landing_versions").insert({
