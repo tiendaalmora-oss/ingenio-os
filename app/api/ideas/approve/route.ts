@@ -161,7 +161,7 @@ export async function POST(req: Request) {
           name: "Landing Principal",
           type: "direct_response",
           is_main: true,
-          status: "PUBLISHED",
+          status: "DRAFT",
           config: {
             folder: "landing",
             hook: offer,
@@ -250,7 +250,16 @@ export async function POST(req: Request) {
           if (desires.length >= 3) htmlResult = htmlResult.replace(/Delegás el local sin perder el control/g, desires[2]);
         }
 
-        fs.writeFileSync(path.join(landingDir, "index.html"), htmlResult, "utf8");
+        fs.writeFileSync(path.join(landingDir, "draft.html"), htmlResult, "utf8");
+
+        if (variant?.id) {
+          await supabase.from("landing_variants").update({ draft_html: htmlResult }).eq("id", variant.id);
+          await supabase.from("landing_versions").insert({
+            variant_id: variant.id,
+            content_html: htmlResult,
+            prompt_used: "Generación inicial de idea"
+          });
+        }
       }
     }
 

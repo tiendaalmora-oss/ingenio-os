@@ -197,18 +197,39 @@ export function ProductFactoryModule() {
   };
 
   const handleOpenEditIdeaModal = (idea: Idea) => {
+    const parseArray = (val: any): any[] => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) ? parsed : [val];
+        } catch(e) { return [val]; }
+      }
+      return [];
+    };
+
+    const parseJson = (val: any) => {
+      if (typeof val === 'string') {
+        try { return JSON.parse(val); } catch(e) { return {}; }
+      }
+      return val || {};
+    };
+
     setSelectedIdea(idea);
     setIdeaTitle(idea.title);
     setIdeaNiche(idea.niche);
     setIdeaNotes(idea.notes || "");
     setIdeaAvatar(idea.avatar || "");
-    setIdeaPainPoints((idea.pain_points || []).join(", "));
-    setIdeaDesires((idea.desires || []).join(", "));
+    setIdeaPainPoints(parseArray(idea.pain_points).join(", "));
+    setIdeaDesires(parseArray(idea.desires).join(", "));
     setIdeaOffer(idea.offer || "");
     setIdeaProdDesc(idea.product_description || "");
     setCheckoutUrl(""); // Se pide solo al momento de aprobar
-    const branding = idea.branding || {};
-    const brief = idea.creative_brief || {};
+    
+    const branding = parseJson(idea.branding);
+    const brief = parseJson(idea.creative_brief);
+    
     setIdeaBrandingStyle(branding.style_concept || "");
     setIdeaBrandingColors(branding.colors || {});
     setIdeaPrimaryColor(branding.colors?.primary || "#10b981");
@@ -217,7 +238,7 @@ export function ProductFactoryModule() {
     setIdeaTitleFont(branding.fonts?.title_font || "Outfit");
     setIdeaBodyFont(branding.fonts?.body_font || "Inter");
     setIdeaFontsUrl(branding.google_fonts_url || "");
-    setIdeaBriefSlang((brief.slang || []).join(", "));
+    setIdeaBriefSlang(parseArray(brief.slang).join(", "));
     setIdeaBriefHook(brief.emotional_hook_angle || "");
     setIdeaBriefSophistication(brief.buyer_sophistication || 3);
     setIsModalOpen(true);

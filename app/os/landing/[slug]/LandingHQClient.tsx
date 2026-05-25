@@ -20,12 +20,12 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
   
   // States: AI Creative Editor
   const [selectedVariantForAI, setSelectedVariantForAI] = useState("landing");
-  const [aiLandingChat, setAiLandingChat] = useState<{role: "user" | "assistant", text: string}[]>([
-    { role: "assistant", text: "¡Hola! Soy tu Director Creativo IA. Pídeme cambios de diseño o de copy para este producto. Escribe tu instrucción o usa uno de los presets rápidos de abajo." }
-  ]);
+  const [aiLandingChat, setAiLandingChat] = useState<{role:string, text:string}[]>([]);
   const [aiLandingProcessing, setAiLandingProcessing] = useState(false);
   const [aiLandingInstruction, setAiLandingInstruction] = useState("");
   const [iframeVersion, setIframeVersion] = useState(0);
+  const [previewMode, setPreviewMode] = useState<"draft" | "published">("draft");
+  const [versions, setVersions] = useState<any[]>([]);
   
   // Product state
   const [product, setProduct] = useState(initialProduct);
@@ -132,28 +132,86 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
     if (!instructionText) setAiLandingInstruction("");
     setAiLandingProcessing(true);
 
+    const variantObj = variants?.find((v: any) => v.config?.folder === selectedVariantForAI) || variants?.find((v: any) => v.is_main);
+    if (!variantObj) {
+      setAiLandingChat(prev => [...prev, { role: "assistant", text: "❌ Error: Variante no encontrada" }]);
+      setAiLandingProcessing(false);
+      return;
+    }
+
     try {
-      const filePath = `${selectedVariantForAI}/index.html`;
-      const currentHtml = await readFileContent(slug, 'legacy', filePath);
-      
-      const res = await fetch("/api/ai/edit-code", {
+      const res = await fetch("/api/landing/ai-edit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: currentHtml, instruction: text })
+        body: JSON.stringify({ variantId: variantObj.id, prompt: text })
       });
       
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
-
-      await saveFileContent(slug, 'legacy', filePath, data.newCode);
       
-      setAiLandingChat(prev => [...prev, { role: "assistant", text: "✨ ¡Diseño reestructurado con IA y publicado! El iframe de la derecha se ha actualizado con tus cambios." }]);
+      setAiLandingChat(prev => [...prev, { role: "assistant", text: "✨ ¡Diseño modificado y guardado como BORRADOR! El Live Preview está ahora en modo Borrador." }]);
+      setPreviewMode("draft");
       setIframeVersion(prev => prev + 1);
+      fetchVersions(variantObj.id);
     } catch (err: any) {
       setAiLandingChat(prev => [...prev, { role: "assistant", text: "❌ Error de IA al aplicar cambios: " + err.message }]);
     } finally {
       setAiLandingProcessing(false);
     }
+  };
+
+  const fetchVersions = async (variantId: string) => {
+    try {
+      const res = await fetch(`/api/landing/versions?variantId=${variantId}`);
+      const data = await res.json();
+      if (data.success) setVersions(data.versions);
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (activeTab === "editor_ia") {
+      const variantObj = variants?.find((v: any) => v.config?.folder === selectedVariantForAI) || variants?.find((v: any) => v.is_main);
+      if (variantObj) fetchVersions(variantObj.id);
+    }
+  }, [activeTab, selectedVariantForAI, variants]);
+
+  const handlePublishDraft = async () => {
+    const variantObj = variants?.find((v: any) => v.config?.folder === selectedVariantForAI) || variants?.find((v: any) => v.is_main);
+    if (!variantObj) return;
+
+    if (!confirm("¿Seguro que quieres publicar este borrador y sobreescribir la URL de producción?")) return;
+    
+    try {
+      const res = await fetch("/api/landing/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variantId: variantObj.id })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      alert("Landing publicada exitosamente en producción.");
+      setPreviewMode("published");
+      setIframeVersion(prev => prev + 1);
+    } catch(e:any) { alert("Error: " + e.message); }
+  };
+
+  const handleRollback = async (versionId: string) => {
+    if (!confirm("¿Seguro que quieres restaurar esta versión? Esto sobreescribirá el borrador actual.")) return;
+    try {
+      const res = await fetch("/api/landing/versions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ versionId })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      alert("Versión restaurada como borrador.");
+      setPreviewMode("draft");
+      setIframeVersion(prev => prev + 1);
+      
+      const variantObj = variants?.find((v: any) => v.config?.folder === selectedVariantForAI) || variants?.find((v: any) => v.is_main);
+      if (variantObj) fetchVersions(variantObj.id);
+    } catch(e:any) { alert("Error: " + e.message); }
   };
 
   // Save product details (Ficha)
@@ -359,32 +417,93 @@ export default function LandingHQClient({ slug, initialData }: { slug: string, i
               {/* Right Column: Live Iframe Preview (3 cols) */}
               <div className="col-span-3 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col h-full">
                 <div className="bg-zinc-950 px-4 py-2 border-b border-zinc-800 flex justify-between items-center">
-                  <span className="text-xs font-mono text-zinc-500">Live Preview: /{slug}/{selectedVariantForAI === 'landing' ? '' : selectedVariantForAI}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-mono text-zinc-500">Live Preview:</span>
+                    <div className="flex bg-black rounded-lg border border-zinc-800 overflow-hidden">
+                      <button 
+                        onClick={() => setPreviewMode("draft")}
+                        className={`text-[10px] px-3 py-1.5 font-bold uppercase transition-colors ${previewMode === "draft" ? "bg-cyan-500/20 text-cyan-400" : "text-zinc-500 hover:text-zinc-300"}`}
+                      >
+                        Borrador
+                      </button>
+                      <button 
+                        onClick={() => setPreviewMode("published")}
+                        className={`text-[10px] px-3 py-1.5 font-bold uppercase transition-colors ${previewMode === "published" ? "bg-emerald-500/20 text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
+                      >
+                        Publicado
+                      </button>
+                    </div>
+                  </div>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => {
-                        const variantSlug = selectedVariantForAI === 'landing' ? '' : `/${selectedVariantForAI}`;
-                        navigator.clipboard.writeText(`https://oferta.ingeniodigital.shop/${slug}${variantSlug}`);
-                        alert('Enlace copiado al portapapeles, listo para tus anuncios!');
-                      }}
-                      className="text-[10px] bg-cyan-900/30 border border-cyan-800/50 hover:bg-cyan-800/50 text-cyan-400 font-bold px-2 py-1 rounded flex items-center gap-1 transition-all"
-                    >
-                      <span>🔗</span> Copiar Enlace Comercial
-                    </button>
-                    <a 
-                      href={`https://oferta.ingeniodigital.shop/${slug}${selectedVariantForAI === 'landing' ? '' : `/${selectedVariantForAI}`}`} 
-                      target="_blank" 
-                      className="text-[11px] font-bold bg-zinc-800 hover:bg-zinc-700 text-white px-2 py-1 rounded flex items-center transition-colors"
-                    >
-                      Ver en otra pestaña ↗
-                    </a>
+                    {previewMode === "draft" && (
+                      <button 
+                        onClick={handlePublishDraft}
+                        className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded flex items-center gap-1 transition-all uppercase tracking-wider"
+                      >
+                        <span>🚀</span> Publicar a Producción
+                      </button>
+                    )}
+                    {previewMode === "published" && (
+                      <>
+                        <button 
+                          onClick={() => {
+                            const variantSlug = selectedVariantForAI === 'landing' ? '' : `/${selectedVariantForAI}`;
+                            navigator.clipboard.writeText(`https://oferta.ingeniodigital.shop/${slug}${variantSlug}`);
+                            alert('Enlace copiado al portapapeles, listo para tus anuncios!');
+                          }}
+                          className="text-[10px] bg-cyan-900/30 border border-cyan-800/50 hover:bg-cyan-800/50 text-cyan-400 font-bold px-2 py-1 rounded flex items-center gap-1 transition-all"
+                        >
+                          <span>🔗</span> Copiar Enlace
+                        </button>
+                        <a 
+                          href={`https://oferta.ingeniodigital.shop/${slug}${selectedVariantForAI === 'landing' ? '' : `/${selectedVariantForAI}`}`} 
+                          target="_blank" 
+                          className="text-[11px] font-bold bg-zinc-800 hover:bg-zinc-700 text-white px-2 py-1 rounded flex items-center transition-colors"
+                        >
+                          Ver en otra pestaña ↗
+                        </a>
+                      </>
+                    )}
                   </div>
                 </div>
-                <div className="flex-1 bg-black">
-                  <iframe 
-                    src={`/legacy/${slug}/${selectedVariantForAI === 'landing' ? 'landing' : selectedVariantForAI}/index.html?v=${iframeVersion}`} 
-                    className="w-full h-full border-none" 
-                  />
+                <div className="flex-1 bg-black flex">
+                  <div className="flex-1">
+                    <iframe 
+                      src={`/legacy/${slug}/${selectedVariantForAI === 'landing' ? 'landing' : selectedVariantForAI}/${previewMode === "published" ? "index.html" : "draft.html"}?v=${iframeVersion}`} 
+                      className="w-full h-full border-none" 
+                    />
+                  </div>
+                  {/* Versions Panel */}
+                  <div className="w-64 bg-zinc-900 border-l border-zinc-800 flex flex-col overflow-hidden hidden md:flex">
+                    <div className="p-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-950">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">⏱️ Historial</span>
+                      <button onClick={() => {
+                        const variantObj = variants?.find((v: any) => v.config?.folder === selectedVariantForAI) || variants?.find((v: any) => v.is_main);
+                        if (variantObj) fetchVersions(variantObj.id);
+                      }} className="text-zinc-500 hover:text-white text-xs">↻</button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                      {versions.length === 0 ? (
+                        <p className="text-[10px] text-zinc-500 text-center py-4">No hay historial</p>
+                      ) : (
+                        versions.map((v, i) => (
+                          <div key={v.id} className="bg-zinc-950 border border-zinc-800 rounded p-2 relative group">
+                            <div className="text-[9px] text-zinc-500 mb-1">{new Date(v.created_at).toLocaleString()}</div>
+                            <div className="text-[10px] text-zinc-300 line-clamp-2" title={v.prompt_used}>{v.prompt_used || 'Generado'}</div>
+                            {i > 0 && (
+                              <button 
+                                onClick={() => handleRollback(v.id)}
+                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-cyan-600 text-white text-[9px] px-1.5 py-0.5 rounded transition-opacity"
+                              >
+                                Revertir
+                              </button>
+                            )}
+                            {i === 0 && <span className="absolute top-2 right-2 text-[9px] text-emerald-500">Actual</span>}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
