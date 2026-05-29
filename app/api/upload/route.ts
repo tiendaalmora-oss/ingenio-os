@@ -2,22 +2,54 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+const MAX_FILE_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB
+
+const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/avi', 'video/mov'];
+
+const ALLOWED_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES];
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const slug = formData.get('slug') as string;
-    const folder = formData.get('folder') as string; // 'hero', 'logos', 'zip_deploy', etc.
+    const folderOverride = formData.get('folder') as string; // 'hero', 'logos', 'zip_deploy', 'videos', etc.
 
     if (!file || !slug) {
       return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 });
     }
 
+    // Validar tamaño máximo
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: `El archivo supera el tamaño máximo permitido (200 MB). Tamaño recibido: ${(file.size / 1024 / 1024).toFixed(1)} MB` },
+        { status: 413 }
+      );
+    }
+
+    // Determinar tipo y carpeta automáticamente
+    const isVideo = VIDEO_TYPES.includes(file.type);
+    const isImage = IMAGE_TYPES.includes(file.type);
+
+    if (!ALLOWED_TYPES.includes(file.type) && file.type !== 'application/zip') {
+      return NextResponse.json(
+        { error: `Tipo de archivo no permitido: ${file.type}. Permitidos: imágenes y videos mp4/webm/mov.` },
+        { status: 400 }
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
-    
+
     // Lógica operacional de carpetas
-    let targetDir = path.join(process.cwd(), 'public', 'assets', slug, folder || '');
-    
+    let folder = folderOverride;
+    if (!folder) {
+      // Auto-detectar carpeta si no se especifica
+      folder = isVideo ? 'videos' : 'images';
+    }
+
+    let targetDir = path.join(process.cwd(), 'public', 'assets', slug, folder);
+
     if (folder === 'zip_deploy') {
       // Reemplazo de build completo en la carpeta legacy
       targetDir = path.join(process.cwd(), 'public', 'legacy', slug);
@@ -31,13 +63,11 @@ export async function POST(req: NextRequest) {
     const filePath = path.join(targetDir, file.name);
     fs.writeFileSync(filePath, buffer);
 
-    // NOTA OPERACIONAL: Si es un ZIP, en producción aquí se ejecutaría un script 
-    // de extracción (ej. adm-zip) para desempaquetar la landing.
-
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: 'Archivo subido con éxito',
-      url: `/api/media/${slug}/${folder}/${file.name}`
+      url: `/api/media/${slug}/${folder}/${file.name}`,
+      type: isVideo ? 'video' : 'image',
     });
   } catch (err: unknown) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

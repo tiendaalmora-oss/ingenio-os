@@ -52,14 +52,17 @@ export default function LandingBuilderPage() {
   const [slug, setSlug] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [message, setMessage] = useState<{type: 'error' | 'success', text: string} | null>(null);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
 
-  // Image Gallery State
-  const [showGallery, setShowGallery] = useState(false);
+  // Media Bank State
+  const [activeBank, setActiveBank] = useState<'images' | 'videos' | null>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedVideos, setUploadedVideos] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Keyboard Shortcuts
@@ -77,23 +80,37 @@ export default function LandingBuilderPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [history, historyIndex]);
 
-  // Load images
+  // Load images when image bank opens
   useEffect(() => {
-    const fetchImages = async () => {
-      try {
-        const res = await fetch(`/api/upload?slug=${slug.trim() || 'manual_uploads'}`);
-        const data = await res.json();
-        if (data.success) {
-          setUploadedImages(data.files);
+    if (activeBank === 'images') {
+      const fetchImages = async () => {
+        try {
+          const res = await fetch(`/api/upload?slug=${slug.trim() || 'manual_uploads'}&folder=images`);
+          const data = await res.json();
+          if (data.success) setUploadedImages(data.files);
+        } catch (err) {
+          console.error("Failed to load images", err);
         }
-      } catch (err) {
-        console.error("Failed to load images", err);
-      }
-    };
-    if (showGallery) {
+      };
       fetchImages();
     }
-  }, [showGallery, slug]);
+  }, [activeBank, slug]);
+
+  // Load videos when video bank opens
+  useEffect(() => {
+    if (activeBank === 'videos') {
+      const fetchVideos = async () => {
+        try {
+          const res = await fetch(`/api/upload?slug=${slug.trim() || 'manual_uploads'}&folder=videos`);
+          const data = await res.json();
+          if (data.success) setUploadedVideos(data.files);
+        } catch (err) {
+          console.error("Failed to load videos", err);
+        }
+      };
+      fetchVideos();
+    }
+  }, [activeBank, slug]);
 
   // Iframe Click-to-Edit Listener
   useEffect(() => {
@@ -109,12 +126,9 @@ export default function LandingBuilderPage() {
         if (index !== -1) {
           textarea.focus();
           textarea.setSelectionRange(index, index + snippet.length);
-          
-          // Scroll textarea to selection (approximate calculation)
           const lines = val.substring(0, index).split('\n');
-          const lineHeight = 20; // px
+          const lineHeight = 20;
           textarea.scrollTop = Math.max(0, (lines.length - 3) * lineHeight);
-          
           setMessage({ type: 'success', text: `Elemento <${event.data.tagName}> seleccionado en el código.` });
           setTimeout(() => setMessage(null), 2000);
         }
@@ -127,13 +141,9 @@ export default function LandingBuilderPage() {
 
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
-    
-    // Save to history
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(newCode);
-    
     if (newHistory.length > 50) newHistory.shift();
-    
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
   };
@@ -165,17 +175,14 @@ export default function LandingBuilderPage() {
     formData.append("folder", "images");
 
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
 
       if (data.success) {
         navigator.clipboard.writeText(data.url);
         setUploadedImages(prev => [...prev, data.url]);
-        setShowGallery(true);
-        setMessage({ type: 'success', text: `Imagen subida y copiada al portapapeles` });
+        setActiveBank('images');
+        setMessage({ type: 'success', text: `Imagen subida y URL copiada al portapapeles` });
       } else {
         throw new Error(data.error || "Error al subir la imagen");
       }
@@ -185,6 +192,74 @@ export default function LandingBuilderPage() {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validación de tamaño en el cliente (200 MB)
+    if (file.size > 200 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'El video supera el límite de 200 MB.' });
+      return;
+    }
+
+    setIsUploadingVideo(true);
+    setMessage({ type: 'success', text: `Subiendo video "${file.name}"... esto puede tardar unos segundos.` });
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("slug", slug.trim() !== "" ? slug.trim() : "manual_uploads");
+    formData.append("folder", "videos");
+
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (data.success) {
+        setUploadedVideos(prev => [...prev, data.url]);
+        setActiveBank('videos');
+        setMessage({ type: 'success', text: `¡Video "${file.name}" subido exitosamente!` });
+        setTimeout(() => setMessage(null), 4000);
+      } else {
+        throw new Error(data.error || "Error al subir el video");
+      }
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+    }
+  };
+
+  // Inserta el snippet de video HTML5 optimizado en el código
+  const insertVideoSnippet = (videoUrl: string) => {
+    const videoName = videoUrl.split('/').pop() || 'video';
+    const snippet = `\n<!-- VIDEO: ${videoName} — Carga solo cuando el usuario llega a esta sección -->
+<div style="position:relative; width:100%; padding-bottom:56.25%; height:0; overflow:hidden; background:#000; border-radius:8px;">
+  <video
+    style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;"
+    src="${videoUrl}"
+    controls
+    preload="none"
+    playsinline
+    muted
+    loop
+  >
+    Tu navegador no soporta video HTML5.
+  </video>
+</div>\n`;
+
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newCode = code.substring(0, start) + snippet + code.substring(end);
+      handleCodeChange(newCode);
+      setMessage({ type: 'success', text: '✅ Snippet de video insertado en el cursor. Quitá "muted" y "loop" si no los necesitás.' });
+      setTimeout(() => setMessage(null), 5000);
+    }
+    setActiveBank(null);
   };
 
   const copyImageUrl = (url: string) => {
@@ -207,11 +282,7 @@ export default function LandingBuilderPage() {
       const res = await fetch("/api/landing/manual-publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          slug: slug.trim(), 
-          html: code,
-          variantId: variantId 
-        })
+        body: JSON.stringify({ slug: slug.trim(), html: code, variantId: variantId })
       });
       const data = await res.json();
 
@@ -236,18 +307,13 @@ export default function LandingBuilderPage() {
     e.stopPropagation();
     
     let target = e.target;
-    // Intentar no enviar html entero o body entero
     if (target.tagName.toLowerCase() === 'html' || target.tagName.toLowerCase() === 'body') return;
 
-    // Extraer exactamente como se veria este tag pero sin su innerHTML si es muy largo
-    // Para simplificar, cortamos en 150 caracteres para hacer match en el codigo fuente
     let clone = target.cloneNode(false);
     let snippet = clone.outerHTML.replace('></' + target.tagName.toLowerCase() + '>', '>');
     
-    // Fallback por si la etiqueta se cierra en linea (img, input)
     if (snippet.length > 100) snippet = snippet.substring(0, 100);
 
-    // Enviar mensaje al editor padre
     window.parent.postMessage({ 
       type: 'ELEMENT_CLICKED', 
       snippet: snippet,
@@ -256,6 +322,9 @@ export default function LandingBuilderPage() {
   }, true);
 </script>
 `;
+
+  // Archivo de video activo (para mostrar preview en hover)
+  const [hoveredVideo, setHoveredVideo] = useState<string | null>(null);
 
   return (
     <div className="h-screen bg-zinc-950 flex flex-col text-white font-sans">
@@ -330,7 +399,8 @@ export default function LandingBuilderPage() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Hidden file inputs */}
           <input 
             type="file" 
             accept="image/*" 
@@ -338,29 +408,62 @@ export default function LandingBuilderPage() {
             onChange={handleImageUpload}
             className="hidden"
           />
+          <input 
+            type="file" 
+            accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+            ref={videoInputRef}
+            onChange={handleVideoUpload}
+            className="hidden"
+          />
+
+          {/* Banco de Imágenes */}
           <button 
-            onClick={() => setShowGallery(!showGallery)}
-            className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${showGallery ? 'bg-cyan-900 text-cyan-300' : 'text-zinc-400 hover:text-white'}`}
+            onClick={() => setActiveBank(activeBank === 'images' ? null : 'images')}
+            className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${activeBank === 'images' ? 'bg-cyan-900 text-cyan-300' : 'text-zinc-400 hover:text-white'}`}
           >
-            🖼️ Banco de Imágenes
+            🖼️ Imágenes
           </button>
+
+          {/* Banco de Videos */}
+          <button 
+            onClick={() => setActiveBank(activeBank === 'videos' ? null : 'videos')}
+            className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${activeBank === 'videos' ? 'bg-violet-900 text-violet-300' : 'text-zinc-400 hover:text-white'}`}
+          >
+            🎬 Videos
+          </button>
+
+          {/* Divisor */}
+          <div className="w-px h-5 bg-zinc-700 mx-1"></div>
+
+          {/* Subir Imagen */}
           <button 
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="flex items-center gap-2 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 border border-zinc-700"
+            className="flex items-center gap-1.5 text-xs font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 border border-zinc-700"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-            {isUploading ? 'Subiendo...' : 'Subir Nueva'}
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            {isUploading ? 'Subiendo...' : 'Img'}
+          </button>
+
+          {/* Subir Video */}
+          <button 
+            onClick={() => videoInputRef.current?.click()}
+            disabled={isUploadingVideo}
+            className="flex items-center gap-1.5 text-xs font-medium text-violet-300 bg-violet-950/60 hover:bg-violet-900/60 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 border border-violet-800/50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+            {isUploadingVideo ? 'Subiendo...' : 'Video'}
           </button>
         </div>
       </div>
 
-      {/* Image Gallery Panel */}
-      {showGallery && (
+      {/* ── Banco de IMÁGENES ─────────────────────────────────────────────────── */}
+      {activeBank === 'images' && (
         <div className="bg-zinc-900 border-b border-zinc-800 p-4 shrink-0 overflow-x-auto">
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
+            <span className="text-xs text-zinc-500 shrink-0 font-bold uppercase tracking-wider">Imágenes</span>
             {uploadedImages.length === 0 ? (
-              <p className="text-zinc-500 text-sm italic">No hay imágenes en el banco. Sube una para comenzar.</p>
+              <p className="text-zinc-500 text-sm italic">No hay imágenes. Sube una con el botón "Img".</p>
             ) : (
               uploadedImages.map((url, idx) => (
                 <div 
@@ -375,6 +478,65 @@ export default function LandingBuilderPage() {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Banco de VIDEOS ──────────────────────────────────────────────────── */}
+      {activeBank === 'videos' && (
+        <div className="bg-zinc-900/80 border-b border-violet-900/30 p-4 shrink-0 overflow-x-auto">
+          <div className="flex gap-4 items-center">
+            <span className="text-xs text-violet-400 shrink-0 font-bold uppercase tracking-wider">Videos</span>
+            {uploadedVideos.length === 0 ? (
+              <p className="text-zinc-500 text-sm italic">No hay videos. Sube uno con el botón "Video". (mp4, webm, mov — máx 200 MB)</p>
+            ) : (
+              uploadedVideos.map((url, idx) => {
+                const name = url.split('/').pop() || 'video';
+                return (
+                  <div key={idx} className="shrink-0 flex flex-col items-center gap-1.5">
+                    {/* Preview del video */}
+                    <div
+                      className="w-28 h-20 bg-zinc-950 border border-violet-800/50 rounded overflow-hidden cursor-pointer group relative"
+                      onMouseEnter={() => setHoveredVideo(url)}
+                      onMouseLeave={() => setHoveredVideo(null)}
+                    >
+                      <video
+                        src={url}
+                        className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                        preload="metadata"
+                        muted
+                        playsInline
+                        ref={el => {
+                          if (el) {
+                            if (hoveredVideo === url) {
+                              el.play().catch(() => {});
+                            } else {
+                              el.pause();
+                              el.currentTime = 0;
+                            }
+                          }
+                        }}
+                      />
+                      {/* Icono play cuando no se hovea */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center group-hover:opacity-0 transition-opacity">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Nombre y botón insertar */}
+                    <span className="text-[9px] text-zinc-500 max-w-[112px] truncate" title={name}>{name}</span>
+                    <button
+                      onClick={() => insertVideoSnippet(url)}
+                      className="text-[10px] font-bold bg-violet-600 hover:bg-violet-500 text-white px-2.5 py-1 rounded transition-colors"
+                    >
+                      + Insertar en HTML
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
