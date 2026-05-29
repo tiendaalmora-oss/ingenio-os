@@ -61,6 +61,11 @@ export default function LandingBuilderPage() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedVideos, setUploadedVideos] = useState<string[]>([]);
 
+  // Poster state: maps videoUrl -> selected posterUrl
+  const [videoPoster, setVideoPoster] = useState<Record<string, string>>({});
+  // When this is set, clicking an image assigns it as poster for this videoUrl
+  const [selectingPosterFor, setSelectingPosterFor] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -235,16 +240,20 @@ export default function LandingBuilderPage() {
   // Inserta el snippet de video HTML5 optimizado en el código
   const insertVideoSnippet = (videoUrl: string) => {
     const videoName = videoUrl.split('/').pop() || 'video';
+    const posterUrl = videoPoster[videoUrl] || '';
+    const posterLine = posterUrl ? `\n    poster="${posterUrl}"` : '';
+    const posterComment = posterUrl ? '' : '\n    <!-- TIP: Agregá poster="URL-imagen" para mostrar una portada antes de que el usuario presione play -->';
+
     const snippet = `\n<!-- VIDEO: ${videoName} — Carga solo cuando el usuario llega a esta sección -->
 <div style="position:relative; width:100%; padding-bottom:56.25%; height:0; overflow:hidden; background:#000; border-radius:8px;">
   <video
     style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;"
-    src="${videoUrl}"
+    src="${videoUrl}"${posterLine}
     controls
     preload="none"
     playsinline
     muted
-    loop
+    loop${posterComment}
   >
     Tu navegador no soporta video HTML5.
   </video>
@@ -256,10 +265,12 @@ export default function LandingBuilderPage() {
       const end = textarea.selectionEnd;
       const newCode = code.substring(0, start) + snippet + code.substring(end);
       handleCodeChange(newCode);
-      setMessage({ type: 'success', text: '✅ Snippet de video insertado en el cursor. Quitá "muted" y "loop" si no los necesitás.' });
-      setTimeout(() => setMessage(null), 5000);
+      const posterMsg = posterUrl ? ` con portada: ${posterUrl.split('/').pop()}` : ' (sin portada — usá el botón 📸 para asignar una)';
+      setMessage({ type: 'success', text: `✅ Video insertado${posterMsg}` });
+      setTimeout(() => setMessage(null), 6000);
     }
     setActiveBank(null);
+    setSelectingPosterFor(null);
   };
 
   const copyImageUrl = (url: string) => {
@@ -459,25 +470,69 @@ export default function LandingBuilderPage() {
 
       {/* ── Banco de IMÁGENES ─────────────────────────────────────────────────── */}
       {activeBank === 'images' && (
-        <div className="bg-zinc-900 border-b border-zinc-800 p-4 shrink-0 overflow-x-auto">
+        <div className={`border-b p-4 shrink-0 overflow-x-auto transition-colors ${
+          selectingPosterFor
+            ? 'bg-amber-950/40 border-amber-700/50'
+            : 'bg-zinc-900 border-zinc-800'
+        }`}>
           <div className="flex gap-4 items-center">
-            <span className="text-xs text-zinc-500 shrink-0 font-bold uppercase tracking-wider">Imágenes</span>
+            {/* Label contextual: modo normal vs modo selección de poster */}
+            <div className="shrink-0 flex flex-col gap-0.5">
+              <span className={`text-xs font-bold uppercase tracking-wider ${
+                selectingPosterFor ? 'text-amber-400' : 'text-zinc-500'
+              }`}>
+                {selectingPosterFor ? '📸 Elegí portada' : 'Imágenes'}
+              </span>
+              {selectingPosterFor && (
+                <button
+                  onClick={() => setSelectingPosterFor(null)}
+                  className="text-[9px] text-amber-600 hover:text-amber-400 underline text-left"
+                >
+                  cancelar
+                </button>
+              )}
+            </div>
+
             {uploadedImages.length === 0 ? (
               <p className="text-zinc-500 text-sm italic">No hay imágenes. Sube una con el botón "Img".</p>
             ) : (
-              uploadedImages.map((url, idx) => (
-                <div 
-                  key={idx} 
-                  onClick={() => copyImageUrl(url)}
-                  className="w-20 h-20 shrink-0 bg-zinc-950 border border-zinc-700 rounded overflow-hidden cursor-pointer group relative"
-                  title="Clic para copiar URL"
-                >
-                  <img src={url} alt="Uploaded" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] font-bold">COPIAR</span>
+              uploadedImages.map((url, idx) => {
+                const isSelectedPoster = videoPoster[selectingPosterFor ?? ''] === url;
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      if (selectingPosterFor) {
+                        // Modo selección de poster: asignar imagen al video
+                        setVideoPoster(prev => ({ ...prev, [selectingPosterFor]: url }));
+                        setSelectingPosterFor(null);
+                        setMessage({ type: 'success', text: `✅ Portada asignada. Ahora hacé clic en "+ Insertar en HTML" en el video.` });
+                        setTimeout(() => setMessage(null), 4000);
+                      } else {
+                        copyImageUrl(url);
+                      }
+                    }}
+                    className={`w-20 h-20 shrink-0 bg-zinc-950 rounded overflow-hidden cursor-pointer group relative transition-all ${
+                      isSelectedPoster
+                        ? 'border-2 border-amber-400 ring-2 ring-amber-400/30'
+                        : selectingPosterFor
+                        ? 'border border-amber-700/50 hover:border-amber-400'
+                        : 'border border-zinc-700'
+                    }`}
+                    title={selectingPosterFor ? 'Usar como portada del video' : 'Clic para copiar URL'}
+                  >
+                    <img src={url} alt="Uploaded" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[10px] font-bold">{selectingPosterFor ? 'PORTADA' : 'COPIAR'}</span>
+                    </div>
+                    {isSelectedPoster && (
+                      <div className="absolute top-1 right-1 w-4 h-4 bg-amber-400 rounded-full flex items-center justify-center">
+                        <span className="text-[8px] text-black font-black">✓</span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -526,14 +581,46 @@ export default function LandingBuilderPage() {
                       </div>
                     </div>
 
-                    {/* Nombre y botón insertar */}
+                    {/* Nombre, poster asignado y botones */}
                     <span className="text-[9px] text-zinc-500 max-w-[112px] truncate" title={name}>{name}</span>
-                    <button
-                      onClick={() => insertVideoSnippet(url)}
-                      className="text-[10px] font-bold bg-violet-600 hover:bg-violet-500 text-white px-2.5 py-1 rounded transition-colors"
-                    >
-                      + Insertar en HTML
-                    </button>
+
+                    {/* Indicador de poster asignado */}
+                    {videoPoster[url] && (
+                      <div className="flex items-center gap-1 bg-amber-950/60 border border-amber-700/40 rounded px-1.5 py-0.5 max-w-[112px]">
+                        <img src={videoPoster[url]} alt="poster" className="w-4 h-4 object-cover rounded-sm shrink-0" />
+                        <span className="text-[8px] text-amber-400 truncate">{videoPoster[url].split('/').pop()}</span>
+                        <button
+                          onClick={() => setVideoPoster(prev => { const n = {...prev}; delete n[url]; return n; })}
+                          className="text-amber-600 hover:text-red-400 shrink-0 ml-0.5"
+                          title="Quitar portada"
+                        >×</button>
+                      </div>
+                    )}
+
+                    <div className="flex gap-1">
+                      {/* Botón asignar poster */}
+                      <button
+                        onClick={() => {
+                          setSelectingPosterFor(url);
+                          setActiveBank('images');
+                        }}
+                        className={`text-[10px] font-bold px-2 py-1 rounded transition-colors border ${
+                          videoPoster[url]
+                            ? 'bg-amber-900/40 border-amber-700/50 text-amber-400 hover:bg-amber-800/50'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-amber-400 hover:border-amber-700/50'
+                        }`}
+                        title="Asignar imagen de portada"
+                      >
+                        📸
+                      </button>
+                      {/* Botón insertar */}
+                      <button
+                        onClick={() => insertVideoSnippet(url)}
+                        className="text-[10px] font-bold bg-violet-600 hover:bg-violet-500 text-white px-2.5 py-1 rounded transition-colors"
+                      >
+                        + Insertar
+                      </button>
+                    </div>
                   </div>
                 );
               })
