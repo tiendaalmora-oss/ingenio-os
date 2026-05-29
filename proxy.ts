@@ -27,6 +27,7 @@ const SECTION_PREFIXES = ["demo", "manual", "app"];
 /** System routes that should never be treated as project slugs */
 const SYSTEM_ROUTES = [
   "os",
+  "hq",       // Panel de control principal
   "login",
   "api",
   "_next",
