@@ -6,6 +6,7 @@ import { TopBar } from "../os/components/TopBar";
 import { OperationsModule } from "../os/modules/OperationsModule";
 import { ProductFactoryModule } from "../os/modules/ProductFactoryModule";
 import { LandingFactoryModule } from "../os/modules/LandingFactoryModule";
+import { MessagingCRMModule } from "../os/modules/MessagingCRMModule";
 import { CreativeLabModule } from "../os/modules/CreativeLabModule";
 import { MetaOpsModule } from "../os/modules/MetaOpsModule";
 import { MetricsModule } from "../os/modules/MetricsModule";
@@ -19,6 +20,7 @@ export default function IngenioOSDashboard() {
 
   const moduleTitles: Record<ModuleId, string> = {
     operations: "Operaciones Globales",
+    crm: "CRM y Mensajería",
     product_factory: "Fábrica de Productos",
     landing_factory: "Fábrica de Landings",
     creative_lab: "Laboratorio Creativo",
@@ -39,6 +41,7 @@ export default function IngenioOSDashboard() {
 
         <div className="flex-1 overflow-y-auto">
           {activeModule === "operations" && <OperationsModule />}
+          {activeModule === "crm" && <MessagingCRMModule />}
           {activeModule === "product_factory" && <ProductFactoryModule />}
           {activeModule === "landing_factory" && <LandingFactoryModule />}
           {activeModule === "creative_lab" && <CreativeLabModule />}

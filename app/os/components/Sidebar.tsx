@@ -2,6 +2,7 @@ import React from "react";
 
 export type ModuleId =
   | "operations"
+  | "crm"
   | "product_factory"
   | "landing_factory"
   | "creative_lab"
@@ -20,6 +21,7 @@ interface SidebarProps {
 export function Sidebar({ activeModule, onSelect }: SidebarProps) {
   const coreModules: { id: ModuleId; label: string; icon: string }[] = [
     { id: "operations", label: "Operaciones", icon: "🌐" },
+    { id: "crm", label: "CRM & Embudos", icon: "💬" },
     { id: "product_factory", label: "Fábrica de Productos", icon: "🏭" },
     { id: "landing_factory", label: "Fábrica de Landings", icon: "🎨" },
     { id: "creative_lab", label: "Laboratorio Creativo", icon: "✨" },
