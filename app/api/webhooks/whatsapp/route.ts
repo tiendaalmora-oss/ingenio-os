@@ -111,13 +111,17 @@ export async function POST(req: Request) {
     }
 
     // 2. Registrar la conversación en la tabla de auditoría (Phase 2)
-    await supabase.from("crm_conversations").insert([{
+    const { error: insertError } = await supabase.from("crm_conversations").insert([{
       contact_id: contact.id,
       direction: "inbound",
-      type: type === "chat" ? "text" : type,
+      type: type === "chat" || !type ? "text" : type,
       content: content || "Multimedia",
       metadata: body.payload
     }]);
+
+    if (insertError) {
+      console.error("Error guardando inbound en crm_conversations:", insertError);
+    }
 
     // 3. Funnel Engine Lógico (Respuestas automáticas)
     // Si el contacto recién fue creado, le enviamos la plantilla de la etapa 1
