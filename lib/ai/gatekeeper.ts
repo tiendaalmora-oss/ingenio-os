@@ -1,0 +1,91 @@
+export async function evaluateGatekeeper(
+  chatHistory: any[],
+  currentStep: any,
+  userMessage: string
+): Promise<{ accion: "avanzar" | "responder" | "humano"; respuesta_ia: string }> {
+  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
+  const rawModel = process.env.OPENROUTER_MODEL || "";
+  const DEFAULT_MODEL = rawModel.trim().replace(/\.+$/, "") || "openai/gpt-4o-mini";
+
+  if (!OPENROUTER_API_KEY) {
+    throw new Error("OPENROUTER_API_KEY no configurada");
+  }
+
+  // Preparamos el historial reciente (últimos 10 mensajes) para no exceder tokens
+  const recentHistory = chatHistory.slice(-10).map((msg) => ({
+    role: msg.direction === "inbound" ? "user" : "assistant",
+    content: msg.content,
+  }));
+
+  const systemPrompt = `Eres un "Guardián de Embudo" (Gatekeeper IA) de ventas.
+Tu trabajo NO es vender libremente ni improvisar. Tu trabajo es interpretar la intención del cliente, responder sus dudas cortamente, y guiarlo hacia el OBJETIVO de la etapa actual.
+
+ESTÁS EN LA ETAPA: ${currentStep.name}
+OBJETIVO DE ESTA ETAPA PARA AVANZAR: ${currentStep.ai_goal || "El cliente debe mostrar interés genuino para avanzar."}
+INTENCIONES VÁLIDAS PARA AVANZAR: ${currentStep.ai_valid_intents || "Ninguna especificada."}
+PREGUNTAS FRECUENTES PERMITIDAS (FAQ): ${currentStep.ai_faq || "Ninguna especificada."}
+
+REGLAS ESTRICTAS:
+1. Analiza el último mensaje del usuario.
+2. ¿Cumple el OBJETIVO de esta etapa? 
+   - SI CUMPLE: Responde ÚNICAMENTE con accion="avanzar" y respuesta_ia="". NO agregues texto extra.
+   - NO CUMPLE (ej. hizo una pregunta válida de la FAQ): Responde cortito (máx 2 renglones) usando la FAQ, vuelve a anclar al usuario hacia el OBJETIVO, con accion="responder".
+   - REQUIERE HUMANO (ej. problema técnico, reclamo, pide activación, insultos): Responde con accion="humano" y respuesta_ia="".
+3. NO inventes información, precios, ni promociones. Usa SOLO las FAQ.
+4. Tu respuesta debe ser EXCLUSIVAMENTE un objeto JSON válido, sin formato markdown (\`\`\`json).
+
+Formato de Respuesta JSON esperado:
+{
+  "accion": "avanzar" | "responder" | "humano",
+  "respuesta_ia": "Texto de tu respuesta (vacío si es avanzar o humano)"
+}`;
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+      "HTTP-Referer": "https://os.ingeniodigital.shop",
+      "X-Title": "Ingenio OS Gatekeeper",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: DEFAULT_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...recentHistory,
+        { role: "user", content: userMessage }
+      ],
+      temperature: 0.1, // Baja temperatura para decisiones lógicas estrictas
+      max_tokens: 500,
+      response_format: { type: "json_object" } // Fuerza a que la respuesta sea un JSON válido (soportado por gpt-4o-mini y claude)
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("Error OpenRouter Gatekeeper:", errText);
+    throw new Error("Fallo en la conexión con la IA");
+  }
+
+  const data = await response.json();
+  let rawContent = data.choices?.[0]?.message?.content || "{}";
+
+  // Limpiar posible markdown
+  rawContent = rawContent.trim();
+  if (rawContent.startsWith("\`\`\`json")) {
+    rawContent = rawContent.replace(/^\`\`\`json/, "").replace(/\`\`\`$/, "").trim();
+  } else if (rawContent.startsWith("\`\`\`")) {
+    rawContent = rawContent.replace(/^\`\`\`/, "").replace(/\`\`\`$/, "").trim();
+  }
+
+  try {
+    const result = JSON.parse(rawContent);
+    return {
+      accion: result.accion || "responder",
+      respuesta_ia: result.respuesta_ia || ""
+    };
+  } catch (e) {
+    console.error("Error parseando respuesta JSON del Gatekeeper:", rawContent);
+    return { accion: "responder", respuesta_ia: "Por favor, aguardá un momento. ¿En qué más puedo ayudarte?" };
+  }
+}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/supabase";
+import { evaluateGatekeeper } from "@/lib/ai/gatekeeper";
 
 // Variables de entorno para conectar con WAHA (WhatsApp HTTP API)
 const WAHA_URL = process.env.WAHA_URL || "http://localhost:3000";
@@ -123,18 +124,27 @@ export async function POST(req: Request) {
       console.error("Error guardando inbound en crm_conversations:", insertError);
     }
 
-    // 3. Funnel Engine Lógico (Respuestas automáticas)
-    // Si el contacto recién fue creado, le enviamos la plantilla de la etapa 1
+    // 3. Funnel Engine Lógico (Respuestas automáticas e IA)
+    // Obtener todo el historial reciente de la conversación
+    const { data: chatHistory } = await supabase
+      .from("crm_conversations")
+      .select("*")
+      .eq("contact_id", contact.id)
+      .order("created_at", { ascending: true })
+      .limit(20);
+
     if (isNewContact && contact.current_step_id) {
+      // Flujo tradicional para Contacto Nuevo: Disparar la primera plantilla.
       const { data: template } = await supabase
         .from("bot_templates")
         .select("*")
         .eq("step_id", contact.current_step_id)
-        .eq("activo", true)
+        .order("created_at", { ascending: true })
+        .limit(1)
         .single();
       
       if (template && template.mensaje) {
-        // Enviar respuesta por WAHA usando el ID exacto que nos llegó (ej: @lid o @c.us)
+        // Enviar respuesta por WAHA usando el ID exacto que nos llegó
         const sendResult = await sendWahaMessage(from, template.mensaje);
         
         // Guardar la respuesta saliente en la base de datos
@@ -142,9 +152,76 @@ export async function POST(req: Request) {
           contact_id: contact.id,
           direction: "outbound",
           type: "text",
-          content: sendResult.success ? template.mensaje : `[ERROR WAHA] Falló el envío: ${sendResult.error}\n\nMensaje original: ${template.mensaje}`,
+          content: sendResult.success ? template.mensaje : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
           metadata: { template_id: template.id, sendResult }
         }]);
+      }
+    } else if (!isNewContact && contact.current_step_id && contact.status !== 'humano') {
+      // Flujo de IA Guardián para contactos existentes que están en un paso del embudo
+      // 1. Obtener la etapa actual del contacto para ver si tiene configurada la IA
+      const { data: currentStep } = await supabase
+        .from("funnel_steps")
+        .select("*, funnels(ai_enabled)")
+        .eq("id", contact.current_step_id)
+        .single();
+
+      if (currentStep && currentStep.funnels?.ai_enabled) {
+        try {
+          const aiResult = await evaluateGatekeeper(chatHistory || [], currentStep, content || "");
+
+          if (aiResult.accion === "avanzar") {
+            // Avanzar a la siguiente etapa
+            const { data: nextStep } = await supabase
+              .from("funnel_steps")
+              .select("*")
+              .eq("funnel_id", currentStep.funnel_id)
+              .gt("order_index", currentStep.order_index)
+              .order("order_index", { ascending: true })
+              .limit(1)
+              .single();
+
+            if (nextStep) {
+              // 1. Actualizamos el contacto
+              await supabase.from("crm_contacts").update({ current_step_id: nextStep.id }).eq("id", contact.id);
+
+              // 2. Buscamos la plantilla de la nueva etapa
+              const { data: nextTemplate } = await supabase
+                .from("bot_templates")
+                .select("*")
+                .eq("step_id", nextStep.id)
+                .order("created_at", { ascending: true })
+                .limit(1)
+                .single();
+
+              if (nextTemplate && nextTemplate.mensaje) {
+                const sendResult = await sendWahaMessage(from, nextTemplate.mensaje);
+                await supabase.from("crm_conversations").insert([{
+                  contact_id: contact.id,
+                  direction: "outbound",
+                  type: "text",
+                  content: sendResult.success ? nextTemplate.mensaje : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+                  metadata: { template_id: nextTemplate.id, ai_action: "avanzar", sendResult }
+                }]);
+              }
+            }
+          } else if (aiResult.accion === "responder" && aiResult.respuesta_ia) {
+            // Enviar la respuesta de la IA (Atajador de objeciones)
+            const sendResult = await sendWahaMessage(from, aiResult.respuesta_ia);
+            await supabase.from("crm_conversations").insert([{
+              contact_id: contact.id,
+              direction: "outbound",
+              type: "text",
+              content: sendResult.success ? aiResult.respuesta_ia : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+              metadata: { ai_action: "responder", sendResult }
+            }]);
+          } else if (aiResult.accion === "humano") {
+            // Escalar a humano: Cambiar estado y no responder
+            await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
+            // No enviamos mensaje automático
+          }
+        } catch (aiErr) {
+          console.error("Error en evaluación de IA:", aiErr);
+        }
       }
     }
 

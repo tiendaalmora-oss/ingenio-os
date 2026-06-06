@@ -429,6 +429,19 @@ function TemplatesView({ activeFunnelId, funnels }: { activeFunnelId: string, fu
     fetchTemplates();
   }, [activeFunnelId]);
 
+  const updateStep = async (id: string, updates: any) => {
+    try {
+      await fetch(`/api/crm/steps/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates)
+      });
+      fetchTemplates();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const updateTemplate = async (id: string, updates: any) => {
     try {
       await fetch(`/api/crm/templates`, {
@@ -514,18 +527,74 @@ function TemplatesView({ activeFunnelId, funnels }: { activeFunnelId: string, fu
                         </button>
                      </div>
                   ) : (
-                    <div className="flex flex-col gap-3">
-                      <textarea 
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-200 font-mono resize-y min-h-[120px] focus:outline-none focus:border-zinc-600"
-                        defaultValue={template.mensaje}
-                        onBlur={(e) => {
-                          if (e.target.value !== template.mensaje) {
-                            updateTemplate(template.id, { mensaje: e.target.value });
-                          }
-                        }}
-                      />
+                    <div className="flex flex-col gap-6">
+                      {/* Mensaje de la Plantilla */}
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Plantilla Oficial</label>
+                        <textarea 
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-4 text-sm text-zinc-200 font-mono resize-y min-h-[120px] focus:outline-none focus:border-zinc-600"
+                          defaultValue={template.mensaje}
+                          onBlur={(e) => {
+                            if (e.target.value !== template.mensaje) {
+                              updateTemplate(template.id, { mensaje: e.target.value });
+                            }
+                          }}
+                        />
+                      </div>
+
+                      {/* Configuraciones de IA Guardián */}
+                      <div className="border border-zinc-800 rounded-lg bg-zinc-900/50 p-4 space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">🤖</span>
+                          <h4 className="font-bold text-sm text-zinc-300 uppercase tracking-widest">Guardián IA de Etapa</h4>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-semibold text-zinc-500">Objetivo para Avanzar (ai_goal)</label>
+                            <textarea 
+                              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-xs text-zinc-300 resize-y focus:outline-none focus:border-zinc-600 h-20"
+                              placeholder="Ej: El cliente debe confirmar que quiere recibir la demo..."
+                              defaultValue={step.ai_goal || ""}
+                              onBlur={(e) => {
+                                if (e.target.value !== (step.ai_goal || "")) {
+                                  updateStep(step.id, { ai_goal: e.target.value });
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-semibold text-zinc-500">Intenciones Válidas (ai_valid_intents)</label>
+                            <textarea 
+                              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-xs text-zinc-300 resize-y focus:outline-none focus:border-zinc-600 h-20"
+                              placeholder="Ej: quiero la demo, mandamela, pasame info..."
+                              defaultValue={step.ai_valid_intents || ""}
+                              onBlur={(e) => {
+                                if (e.target.value !== (step.ai_valid_intents || "")) {
+                                  updateStep(step.id, { ai_valid_intents: e.target.value });
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2">
+                          <label className="text-xs font-semibold text-zinc-500">FAQ Permitidas (ai_faq)</label>
+                          <textarea 
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-xs text-zinc-300 resize-y focus:outline-none focus:border-zinc-600 h-16"
+                            placeholder="Ej: Sí, sirve para avícolas. No tiene mensualidad..."
+                            defaultValue={step.ai_faq || ""}
+                            onBlur={(e) => {
+                              if (e.target.value !== (step.ai_faq || "")) {
+                                updateStep(step.id, { ai_faq: e.target.value });
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-zinc-500">Última actualización: {new Date(template.updated_at).toLocaleString('es-AR')}</span>
+                        <span className="text-xs text-zinc-500">Última actualización de plantilla: {new Date(template.updated_at).toLocaleString('es-AR')}</span>
                         <span className="text-xs text-green-500 font-medium bg-green-500/10 px-2 py-1 rounded border border-green-500/20">Se guarda automáticamente al quitar el foco</span>
                       </div>
                     </div>
