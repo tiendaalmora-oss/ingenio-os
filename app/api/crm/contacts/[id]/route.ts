@@ -25,9 +25,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .eq("contact_id", id)
       .order("created_at", { ascending: false });
 
-    if (eventsError) throw eventsError;
+    // Obtener conversaciones
+    const { data: conversations, error: conversationsError } = await supabase
+      .from("crm_conversations")
+      .select("*")
+      .eq("contact_id", id)
+      .order("created_at", { ascending: true });
 
-    return NextResponse.json({ success: true, contact, events });
+    if (eventsError) throw eventsError;
+    if (conversationsError) throw conversationsError;
+
+    return NextResponse.json({ success: true, contact, events, conversations });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

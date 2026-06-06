@@ -116,6 +116,8 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
   const [search, setSearch] = useState("");
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [sidebarTab, setSidebarTab] = useState<'chat' | 'info'>('chat');
   const [loadingEvents, setLoadingEvents] = useState(false);
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId);
@@ -170,6 +172,8 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
       const data = await res.json();
       if (data.success) {
         setEvents(data.events || []);
+        setConversations(data.conversations || []);
+        setSidebarTab('chat');
       }
     } catch (err) {
       console.error(err);
@@ -316,45 +320,79 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
             </h3>
             <button onClick={() => setSelectedContact(null)} className="text-zinc-500 hover:text-white">&times;</button>
           </div>
-          <div className="p-4 border-b border-zinc-800/50 bg-zinc-900/50 flex-shrink-0 space-y-2">
-            <div className="text-xs text-zinc-500 uppercase tracking-wider">Nombre</div>
-            <div className="text-sm font-medium">{selectedContact.name || "-"}</div>
-            <div className="text-xs text-zinc-500 uppercase tracking-wider mt-2">Etapa</div>
-            <div className="text-sm font-medium flex items-center gap-2">
-               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: selectedContact.funnel_steps?.color || '#999' }}></span>
-               {selectedContact.funnel_steps?.nombre || "Sin etapa"}
-            </div>
-            <div className="text-xs text-zinc-500 uppercase tracking-wider mt-2">Notas</div>
-            <textarea 
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-xs text-zinc-300 resize-none focus:border-zinc-600 focus:outline-none"
-              rows={3}
-              defaultValue={selectedContact.notas || ""}
-              onBlur={(e) => {
-                fetch(`/api/crm/contacts/${selectedContact.id}`, { method: 'PUT', headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notas: e.target.value }) });
-              }}
-              placeholder="Agregar notas del cliente..."
-            />
+          <div className="flex border-b border-zinc-800 bg-zinc-950 px-4 pt-2 gap-4 flex-shrink-0">
+            <button className={`pb-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${sidebarTab === 'chat' ? 'border-zinc-300 text-white' : 'border-transparent text-zinc-500'}`} onClick={() => setSidebarTab('chat')}>Chat en Vivo</button>
+            <button className={`pb-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${sidebarTab === 'info' ? 'border-zinc-300 text-white' : 'border-transparent text-zinc-500'}`} onClick={() => setSidebarTab('info')}>Info & Eventos</button>
           </div>
-          
-          <div className="flex-1 overflow-y-auto p-4 bg-zinc-950/30">
-            <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">Historial de Eventos</h4>
-            {loadingEvents ? (
-              <div className="text-center text-zinc-500 text-xs">Cargando eventos...</div>
-            ) : events.length === 0 ? (
-              <div className="text-center text-zinc-600 text-xs italic">No hay eventos registrados</div>
-            ) : (
-              <div className="relative border-l border-zinc-800 ml-3 space-y-6 pb-4">
-                {events.map((e: any) => (
-                  <div key={e.id} className="relative pl-5">
-                    <span className="absolute -left-1.5 top-1 w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-950"></span>
-                    <div className="text-xs text-zinc-500 mb-0.5">{new Date(e.created_at).toLocaleString('es-AR')}</div>
-                    <div className="text-sm font-semibold text-white mb-1">{e.tipo.replace(/_/g, " ").toUpperCase()}</div>
-                    <div className="text-xs text-zinc-400 bg-zinc-900/80 p-2 rounded border border-zinc-800/50">{e.descripcion}</div>
-                  </div>
-                ))}
+
+          {sidebarTab === 'info' && (
+            <>
+              <div className="p-4 border-b border-zinc-800/50 bg-zinc-900/50 flex-shrink-0 space-y-2">
+                <div className="text-xs text-zinc-500 uppercase tracking-wider">Nombre</div>
+                <div className="text-sm font-medium">{selectedContact.name || "-"}</div>
+                <div className="text-xs text-zinc-500 uppercase tracking-wider mt-2">Etapa</div>
+                <div className="text-sm font-medium flex items-center gap-2">
+                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: selectedContact.funnel_steps?.color || '#999' }}></span>
+                   {selectedContact.funnel_steps?.nombre || "Sin etapa"}
+                </div>
+                <div className="text-xs text-zinc-500 uppercase tracking-wider mt-2">Notas</div>
+                <textarea 
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-xs text-zinc-300 resize-none focus:border-zinc-600 focus:outline-none"
+                  rows={3}
+                  defaultValue={selectedContact.notas || ""}
+                  onBlur={(e) => {
+                    fetch(`/api/crm/contacts/${selectedContact.id}`, { method: 'PUT', headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notas: e.target.value }) });
+                  }}
+                  placeholder="Agregar notas del cliente..."
+                />
               </div>
-            )}
-          </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 bg-zinc-950/30">
+                <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-4">Historial de Eventos</h4>
+                {loadingEvents ? (
+                  <div className="text-center text-zinc-500 text-xs">Cargando eventos...</div>
+                ) : events.length === 0 ? (
+                  <div className="text-center text-zinc-600 text-xs italic">No hay eventos registrados</div>
+                ) : (
+                  <div className="relative border-l border-zinc-800 ml-3 space-y-6 pb-4">
+                    {events.map((e: any) => (
+                      <div key={e.id} className="relative pl-5">
+                        <span className="absolute -left-1.5 top-1 w-3 h-3 rounded-full bg-zinc-800 border-2 border-zinc-950"></span>
+                        <div className="text-xs text-zinc-500 mb-0.5">{new Date(e.created_at).toLocaleString('es-AR')}</div>
+                        <div className="text-sm font-semibold text-white mb-1">{e.tipo.replace(/_/g, " ").toUpperCase()}</div>
+                        <div className="text-xs text-zinc-400 bg-zinc-900/80 p-2 rounded border border-zinc-800/50">{e.descripcion}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {sidebarTab === 'chat' && (
+            <div className="flex-1 flex flex-col bg-[#0b141a] overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar" style={{ backgroundImage: 'url("https://i.pinimg.com/736x/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg")', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.95 }}>
+                {loadingEvents ? (
+                  <div className="text-center text-zinc-500 text-xs bg-zinc-900/80 rounded-lg p-2 self-center backdrop-blur-md">Cargando chat...</div>
+                ) : conversations.length === 0 ? (
+                  <div className="text-center text-zinc-500 text-xs bg-zinc-900/80 rounded-lg p-2 self-center backdrop-blur-md">No hay mensajes registrados</div>
+                ) : (
+                  conversations.map((msg: any) => {
+                    const isOutbound = msg.direction === 'outbound';
+                    return (
+                      <div key={msg.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] rounded-lg p-3 text-sm shadow-md ${isOutbound ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-none' : 'bg-[#202c33] text-[#e9edef] rounded-tl-none'}`}>
+                           {msg.type !== 'text' && <span className="text-xs opacity-70 block mb-1 tracking-widest font-mono">[{msg.type.toUpperCase()}]</span>}
+                           <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                           <div className="text-[10px] opacity-60 text-right mt-1">{new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
