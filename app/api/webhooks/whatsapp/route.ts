@@ -12,7 +12,9 @@ const WAHA_API_KEY = process.env.WAHA_API_KEY || "";
 async function sendWahaMessage(phone: string, text: string) {
   try {
     const chatId = phone.includes("@c.us") ? phone : `${phone}@c.us`;
-    const res = await fetch(`${WAHA_URL}/api/sendText`, {
+    const wahaUrlBase = WAHA_URL.replace(/\/+$/, ''); // Remove trailing slashes
+    
+    const res = await fetch(`${wahaUrlBase}/api/sendText`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -27,10 +29,14 @@ async function sendWahaMessage(phone: string, text: string) {
     });
     
     if (!res.ok) {
-      console.error("Error al enviar mensaje por WAHA:", await res.text());
+      const errText = await res.text();
+      console.error("Error al enviar mensaje por WAHA:", errText);
+      return { success: false, error: `HTTP ${res.status}: ${errText}` };
     }
-  } catch (error) {
+    return { success: true };
+  } catch (error: any) {
     console.error("Excepción enviando por WAHA:", error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -125,15 +131,15 @@ export async function POST(req: Request) {
       
       if (template && template.mensaje) {
         // Enviar respuesta por WAHA
-        await sendWahaMessage(phone, template.mensaje);
+        const sendResult = await sendWahaMessage(phone, template.mensaje);
         
         // Guardar la respuesta saliente en la base de datos
         await supabase.from("crm_conversations").insert([{
           contact_id: contact.id,
           direction: "outbound",
           type: "text",
-          content: template.mensaje,
-          metadata: { template_id: template.id }
+          content: sendResult.success ? template.mensaje : `[ERROR WAHA] Falló el envío: ${sendResult.error}\n\nMensaje original: ${template.mensaje}`,
+          metadata: { template_id: template.id, sendResult }
         }]);
       }
     }
