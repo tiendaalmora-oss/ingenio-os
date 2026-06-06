@@ -56,7 +56,9 @@ export async function POST(req: Request) {
     }
 
     const { from, body: content, type, fromMe } = body.payload;
-    
+    const pushName = body.payload._data?.notifyName || body.payload.notifyName || body.payload.pushName || "";
+    const isTestNumber = false;
+
     // Ignorar mensajes enviados por el propio bot para no hacer bucles (a menos que queramos auditar todo)
     if (fromMe) {
       return NextResponse.json({ success: true });
