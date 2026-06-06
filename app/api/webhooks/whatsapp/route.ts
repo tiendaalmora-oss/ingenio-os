@@ -9,12 +9,27 @@ const WAHA_SESSION = process.env.WAHA_SESSION || "default";
 const WAHA_API_KEY = process.env.WAHA_API_KEY || "";
 
 /**
+ * Keywords que indican intención positiva de avance (para etapas sin ai_goal)
+ */
+const ADVANCE_KEYWORDS = [
+  "sí", "si", "dale", "ok", "okey", "bueno", "está bien", "esta bien",
+  "quiero", "pasame", "pasá", "mandame", "mandá", "adelante", "claro",
+  "me interesa", "interesado", "interesada", "de acuerdo", "perfecto",
+  "excelente", "genial", "listo", "va", "vamos", "por favor", "please"
+];
+
+/**
+ * Tipos de mensaje multimedia que no podemos procesar con IA
+ */
+const MULTIMEDIA_TYPES = ["audio", "ptt", "image", "video", "document", "sticker", "gif"];
+
+/**
  * Helper para enviar mensajes de texto a través de WAHA
  */
 async function sendWahaMessage(chatId: string, text: string) {
   try {
     const finalChatId = chatId.includes("@") ? chatId : `${chatId}@c.us`;
-    const wahaUrlBase = WAHA_URL.replace(/\/+$/, ''); // Remove trailing slashes
+    const wahaUrlBase = WAHA_URL.replace(/\/+$/, '');
     
     const res = await fetch(`${wahaUrlBase}/api/sendText`, {
       method: "POST",
@@ -43,6 +58,25 @@ async function sendWahaMessage(chatId: string, text: string) {
 }
 
 /**
+ * Detecta si el mensaje contiene intención positiva de avance
+ */
+function hasAdvanceIntent(message: string): boolean {
+  const lower = message.toLowerCase().trim();
+  return ADVANCE_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+/**
+ * Reemplaza variables dinámicas en el texto de la plantilla
+ */
+function interpolateTemplate(text: string, contact: any): string {
+  return text
+    .replace(/\{nombre\}/gi, contact.name || "")
+    .replace(/\{name\}/gi, contact.name || "")
+    .replace(/\{telefono\}/gi, contact.phone || "")
+    .replace(/\{phone\}/gi, contact.phone || "");
+}
+
+/**
  * Webhook para recibir mensajes entrantes de WAHA
  */
 export async function POST(req: Request) {
@@ -59,16 +93,70 @@ export async function POST(req: Request) {
     const pushName = body.payload._data?.notifyName || body.payload.notifyName || body.payload.pushName || "";
     const isTestNumber = false;
 
-    // Ignorar mensajes enviados por el propio bot para no hacer bucles (a menos que queramos auditar todo)
+    // Ignorar mensajes enviados por el propio bot
     if (fromMe) {
       return NextResponse.json({ success: true });
     }
 
-    // Limpiar el teléfono (ej: "5491112345678@c.us" -> "5491112345678")
+    // Limpiar el teléfono
     const phone = from.split("@")[0];
 
+    // ==============================================================
+    // MEJORA 4: Detectar mensajes multimedia ANTES de todo
+    // ==============================================================
+    const isMultimedia = MULTIMEDIA_TYPES.includes(type);
+    if (isMultimedia) {
+      // Buscar o crear contacto mínimo para auditoría
+      let { data: contactCheck } = await supabase
+        .from("crm_contacts")
+        .select("id, name")
+        .eq("phone", phone)
+        .single();
+
+      if (!contactCheck) {
+        const { data: newC } = await supabase.from("crm_contacts").insert([{
+          phone,
+          name: pushName || "Sin nombre",
+          source: "whatsapp",
+          is_test: isTestNumber,
+          ultimo_mensaje: `[${type.toUpperCase()}]`,
+          ultimo_contacto: new Date().toISOString()
+        }]).select("id, name").single();
+        contactCheck = newC;
+      }
+
+      // Registrar el inbound multimedia
+      if (contactCheck) {
+        await supabase.from("crm_conversations").insert([{
+          contact_id: contactCheck.id,
+          direction: "inbound",
+          type: type,
+          content: `[Mensaje de ${type.toUpperCase()} recibido]`,
+          metadata: { type }
+        }]);
+      }
+
+      // Responder pidiendo que escriban el texto
+      const multimediaMsg = `¡Hola${pushName ? " " + pushName : ""}! 👋 Por el momento nuestro asistente solo puede procesar mensajes de texto.\n\n✍️ ¿Podés escribirnos tu consulta? ¡Te ayudamos enseguida!`;
+      await sendWahaMessage(from, multimediaMsg);
+
+      if (contactCheck) {
+        await supabase.from("crm_conversations").insert([{
+          contact_id: contactCheck.id,
+          direction: "outbound",
+          type: "text",
+          content: multimediaMsg,
+          metadata: { multimedia_fallback: true }
+        }]);
+      }
+
+      return NextResponse.json({ success: true, handled: "multimedia" });
+    }
+
+    // ==============================================================
     // 1. Encontrar o Crear Contacto
-    let { data: contact, error: contactError } = await supabase
+    // ==============================================================
+    let { data: contact } = await supabase
       .from("crm_contacts")
       .select("*, funnels(*)")
       .eq("phone", phone)
@@ -79,7 +167,7 @@ export async function POST(req: Request) {
     if (!contact) {
       isNewContact = true;
       
-      const { data: newContact, error: insertError } = await supabase.from("crm_contacts").insert([{
+      const { data: newContact } = await supabase.from("crm_contacts").insert([{
         phone,
         name: pushName || "Sin nombre",
         source: "whatsapp",
@@ -102,20 +190,20 @@ export async function POST(req: Request) {
       }).eq("id", contact.id);
     }
 
+    // ==============================================================
     // 2. Registrar la conversación en la tabla de auditoría
-    const { error: insertMsgError } = await supabase.from("crm_conversations").insert([{
+    // ==============================================================
+    await supabase.from("crm_conversations").insert([{
       contact_id: contact.id,
       direction: "inbound",
-      type: type === "chat" || !type ? "text" : type,
-      content: content || "Multimedia",
+      type: "text",
+      content: content || "",
       metadata: body.payload
     }]);
 
-    if (insertMsgError) {
-      console.error("Error guardando inbound en crm_conversations:", insertMsgError);
-    }
-
-    // 3. Funnel Engine Lógico (Respuestas automáticas e IA)
+    // ==============================================================
+    // 3. Funnel Engine Lógico
+    // ==============================================================
     const { data: chatHistory } = await supabase
       .from("crm_conversations")
       .select("*")
@@ -123,7 +211,12 @@ export async function POST(req: Request) {
       .order("created_at", { ascending: true })
       .limit(20);
 
-    // Si el contacto NO tiene embudo asignado (es nuevo o estaba en limbo por el fallback)
+    // Contar mensajes inbound para detectar cuántas veces escribió
+    const inboundCount = (chatHistory || []).filter(m => m.direction === "inbound").length;
+
+    // ==============================================================
+    // FLUJO A: Contacto sin embudo asignado (limbo)
+    // ==============================================================
     if (!contact.current_step_id && contact.status !== 'humano') {
       const { data: activeFunnels } = await supabase.from("funnels").select("*").eq("activo", true);
       let assignedFunnelId = null;
@@ -138,30 +231,31 @@ export async function POST(req: Request) {
       }
 
       if (assignedFunnelId) {
-        // Enrutamiento exitoso
+        // ✅ Router identificó el embudo
         const { data: firstStep } = await supabase.from("funnel_steps").select("id").eq("funnel_id", assignedFunnelId).order("orden", { ascending: true }).limit(1).single();
         if (firstStep) stepId = firstStep.id;
 
-        // Actualizamos el contacto para sacarlo del limbo
         await supabase.from("crm_contacts").update({ funnel_id: assignedFunnelId, current_step_id: stepId }).eq("id", contact.id);
         
         if (stepId) {
           const { data: template } = await supabase.from("bot_templates").select("*").eq("step_id", stepId).order("created_at", { ascending: true }).limit(1).single();
           if (template && template.mensaje) {
-            const sendResult = await sendWahaMessage(from, template.mensaje);
+            const msg = interpolateTemplate(template.mensaje, contact);
+            const sendResult = await sendWahaMessage(from, msg);
             await supabase.from("crm_conversations").insert([{
               contact_id: contact.id,
               direction: "outbound",
               type: "text",
-              content: sendResult.success ? template.mensaje : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+              content: sendResult.success ? msg : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
               metadata: { template_id: template.id, sendResult }
             }]);
           }
         }
       } else {
-        // Router no entendió la intención
-        // Si es el PRIMER mensaje del usuario, enviamos bienvenida
-        if (isNewContact) {
+        // ❌ Router no pudo identificar intención
+
+        if (isNewContact || inboundCount === 1) {
+          // 🆕 Primer mensaje → bienvenida genérica
           const fallbackMsg = "¡Hola! Gracias por contactarte con nosotros. 👋\n\nContanos, ¿en qué te podemos ayudar el día de hoy?";
           const sendResult = await sendWahaMessage(from, fallbackMsg);
           await supabase.from("crm_conversations").insert([{
@@ -169,24 +263,58 @@ export async function POST(req: Request) {
             direction: "outbound",
             type: "text",
             content: fallbackMsg,
-            metadata: { router_fallback: true }
+            metadata: { router_fallback: true, attempt: inboundCount }
+          }]);
+        } else if (inboundCount === 2) {
+          // ✉️ MEJORA 1: Segundo mensaje sin contexto → nudge específico
+          const nudgeMsg = "Hola de nuevo 👋 Queremos ayudarte, solo contanos: ¿qué producto o servicio te interesa?\n\nPor ejemplo podés escribir: *\"demo AviOS\"*, *\"info balanza\"*, *\"activar licencia\"*, etc. 😊";
+          const sendResult = await sendWahaMessage(from, nudgeMsg);
+          await supabase.from("crm_conversations").insert([{
+            contact_id: contact.id,
+            direction: "outbound",
+            type: "text",
+            content: nudgeMsg,
+            metadata: { router_fallback: true, attempt: inboundCount }
+          }]);
+        } else if (inboundCount >= 3 && inboundCount % 3 === 0) {
+          // 🆘 3er+ mensaje sin contexto cada 3 intentos → escalar a humano
+          await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
+          const humanMsg = "Gracias por tu paciencia 🙏 Uno de nuestros asesores te va a contactar en breve para ayudarte personalmente.";
+          await sendWahaMessage(from, humanMsg);
+          await supabase.from("crm_conversations").insert([{
+            contact_id: contact.id,
+            direction: "outbound",
+            type: "text",
+            content: humanMsg,
+            metadata: { escalated_to_human: true, reason: "limbo_timeout" }
+          }]);
+          await supabase.from("contact_events").insert([{
+            contact_id: contact.id,
+            tipo: "escalado_humano",
+            descripcion: `Escalado automáticamente después de ${inboundCount} mensajes sin identificar intención`
           }]);
         }
-        // Si no es el primer mensaje y sigue en limbo, no hacemos spam, esperamos a que diga palabras clave.
+        // Entre el mensaje 2 y el siguiente múltiplo de 3: silencio controlado (no spam)
       }
+
+    // ==============================================================
+    // FLUJO B: Contacto con embudo asignado
+    // ==============================================================
     } else if (contact.current_step_id && contact.status !== 'humano') {
-      // Flujo de IA Guardián para contactos con embudo asignado
       const { data: currentStep } = await supabase
         .from("funnel_steps")
         .select("*")
         .eq("id", contact.current_step_id)
         .single();
 
-      if (currentStep && currentStep.ai_goal) {
-        try {
-          const aiResult = await evaluateGatekeeper(chatHistory || [], currentStep, content || "");
-
-          if (aiResult.accion === "avanzar") {
+      if (currentStep) {
+        // ==============================================================
+        // MEJORA 3: Guardia para etapas SIN ai_goal configurado
+        // ==============================================================
+        if (!currentStep.ai_goal) {
+          const advanceIntent = hasAdvanceIntent(content || "");
+          if (advanceIntent) {
+            // Avanzar por keyword
             const { data: nextStep } = await supabase
               .from("funnel_steps")
               .select("*")
@@ -198,41 +326,109 @@ export async function POST(req: Request) {
 
             if (nextStep) {
               await supabase.from("crm_contacts").update({ current_step_id: nextStep.id }).eq("id", contact.id);
-
               const { data: nextTemplate } = await supabase.from("bot_templates").select("*").eq("step_id", nextStep.id).order("created_at", { ascending: true }).limit(1).single();
-
               if (nextTemplate && nextTemplate.mensaje) {
-                const sendResult = await sendWahaMessage(from, nextTemplate.mensaje);
+                const msg = interpolateTemplate(nextTemplate.mensaje, contact);
+                const sendResult = await sendWahaMessage(from, msg);
                 await supabase.from("crm_conversations").insert([{
                   contact_id: contact.id,
                   direction: "outbound",
                   type: "text",
-                  content: sendResult.success ? nextTemplate.mensaje : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
-                  metadata: { template_id: nextTemplate.id, ai_action: "avanzar", sendResult }
+                  content: sendResult.success ? msg : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+                  metadata: { template_id: nextTemplate.id, ai_action: "keyword_advance" }
                 }]);
               }
+            } else {
+              // No hay siguiente etapa → llegó al final del embudo
+              const endMsg = "¡Genial! 🎉 Hemos registrado tu interés. Un asesor se va a poner en contacto contigo muy pronto para cerrar los detalles.";
+              await sendWahaMessage(from, endMsg);
+              await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
+              await supabase.from("crm_conversations").insert([{
+                contact_id: contact.id, direction: "outbound", type: "text",
+                content: endMsg, metadata: { funnel_completed: true }
+              }]);
             }
-          } else if (aiResult.accion === "responder" && aiResult.respuesta_ia) {
-            const sendResult = await sendWahaMessage(from, aiResult.respuesta_ia);
+          }
+          // Si no hay ai_goal y no hay keyword de avance → silencio controlado (no spam)
+        } else {
+          // ==============================================================
+          // FLUJO NORMAL: Etapa CON ai_goal → Gatekeeper IA
+          // ==============================================================
+          try {
+            const aiResult = await evaluateGatekeeper(chatHistory || [], currentStep, content || "");
+
+            if (aiResult.accion === "avanzar") {
+              const { data: nextStep } = await supabase
+                .from("funnel_steps")
+                .select("*")
+                .eq("funnel_id", currentStep.funnel_id)
+                .gt("orden", currentStep.orden)
+                .order("orden", { ascending: true })
+                .limit(1)
+                .single();
+
+              if (nextStep) {
+                await supabase.from("crm_contacts").update({ current_step_id: nextStep.id }).eq("id", contact.id);
+                const { data: nextTemplate } = await supabase.from("bot_templates").select("*").eq("step_id", nextStep.id).order("created_at", { ascending: true }).limit(1).single();
+                if (nextTemplate && nextTemplate.mensaje) {
+                  const msg = interpolateTemplate(nextTemplate.mensaje, contact);
+                  const sendResult = await sendWahaMessage(from, msg);
+                  await supabase.from("crm_conversations").insert([{
+                    contact_id: contact.id,
+                    direction: "outbound",
+                    type: "text",
+                    content: sendResult.success ? msg : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+                    metadata: { template_id: nextTemplate.id, ai_action: "avanzar", sendResult }
+                  }]);
+                }
+              } else {
+                // Fin del embudo
+                const endMsg = "¡Excelente! 🎉 Ya tenemos toda la información que necesitamos. Un asesor te va a contactar pronto para los detalles finales.";
+                await sendWahaMessage(from, endMsg);
+                await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
+                await supabase.from("crm_conversations").insert([{
+                  contact_id: contact.id, direction: "outbound", type: "text",
+                  content: endMsg, metadata: { funnel_completed: true }
+                }]);
+              }
+            } else if (aiResult.accion === "responder" && aiResult.respuesta_ia) {
+              const sendResult = await sendWahaMessage(from, aiResult.respuesta_ia);
+              await supabase.from("crm_conversations").insert([{
+                contact_id: contact.id,
+                direction: "outbound",
+                type: "text",
+                content: sendResult.success ? aiResult.respuesta_ia : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+                metadata: { ai_action: "responder", sendResult }
+              }]);
+            } else if (aiResult.accion === "humano") {
+              await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
+              await supabase.from("contact_events").insert([{
+                contact_id: contact.id,
+                tipo: "escalado_humano",
+                descripcion: "IA detectó necesidad de atención humana"
+              }]);
+              // MEJORA 2 + Bonus: Respuesta profesional al escalar (no silencio)
+              const humanMsg = "Entendido 👍 Voy a conectarte con uno de nuestros asesores para que pueda ayudarte mejor. ¡En breve te contactan!";
+              await sendWahaMessage(from, humanMsg);
+              await supabase.from("crm_conversations").insert([{
+                contact_id: contact.id, direction: "outbound", type: "text",
+                content: humanMsg, metadata: { ai_action: "humano" }
+              }]);
+            }
+          } catch (aiErr: any) {
+            // Bonus: Fallback profesional cuando la IA falla
+            console.error("Error en evaluación de IA:", aiErr);
+            const errorFallbackMsg = "Gracias por tu mensaje 🙏 En breve uno de nuestros asesores te va a ayudar personalmente.";
+            await sendWahaMessage(from, errorFallbackMsg);
+            await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
             await supabase.from("crm_conversations").insert([{
               contact_id: contact.id,
               direction: "outbound",
               type: "text",
-              content: sendResult.success ? aiResult.respuesta_ia : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
-              metadata: { ai_action: "responder", sendResult }
+              content: errorFallbackMsg,
+              metadata: { ai_error: aiErr.message, fallback_to_human: true }
             }]);
-          } else if (aiResult.accion === "humano") {
-            await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
           }
-        } catch (aiErr: any) {
-          console.error("Error en evaluación de IA:", aiErr);
-          await supabase.from("crm_conversations").insert([{
-            contact_id: contact.id,
-            direction: "outbound",
-            type: "text",
-            content: `[ERROR IA] Fallo al consultar el Gatekeeper: ${aiErr.message}`,
-            metadata: { error: true }
-          }]);
         }
       }
     }

@@ -284,6 +284,7 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
               <thead className="bg-zinc-950/50 text-zinc-500 sticky top-0 backdrop-blur-md">
                 <tr>
                   <th className="px-4 py-3 font-medium">Teléfono / Nombre</th>
+                  <th className="px-4 py-3 font-medium">Estado</th>
                   <th className="px-4 py-3 font-medium">Etapa Actual</th>
                   <th className="px-4 py-3 font-medium">Última Actividad</th>
                   <th className="px-4 py-3 font-medium text-right">Prueba</th>
@@ -292,11 +293,21 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
               <tbody className="divide-y divide-zinc-800/50">
                 {contacts.map(c => {
                   const step = c.funnel_steps;
+                  const statusBadge = c.status === 'humano'
+                    ? { label: '⚡ Humano', cls: 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse' }
+                    : !c.current_step_id
+                    ? { label: '⏸ Sin embudo', cls: 'bg-zinc-700/40 text-zinc-400 border-zinc-600/30' }
+                    : { label: '🤖 Bot', cls: 'bg-green-500/10 text-green-400 border-green-500/20' };
                   return (
                     <tr key={c.id} onClick={() => openContact(c)} className={`cursor-pointer transition-colors ${selectedContact?.id === c.id ? 'bg-zinc-800/50' : 'hover:bg-zinc-800/30'}`}>
                       <td className="px-4 py-3">
                         <div className="font-bold text-white font-mono">{c.phone}</div>
                         <div className="text-xs text-zinc-500">{c.name || "Sin nombre"}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${statusBadge.cls}`}>
+                          {statusBadge.label}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <select 
@@ -335,10 +346,30 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
       {selectedContact && (
         <div className="w-full md:w-96 bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col overflow-hidden animate-slide-in">
           <div className="p-4 border-b border-zinc-800 bg-zinc-950 flex justify-between items-center flex-shrink-0">
-            <h3 className="font-bold text-white flex items-center gap-2">
-              <span className="text-xl">👤</span> {selectedContact.phone}
-            </h3>
-            <button onClick={() => setSelectedContact(null)} className="text-zinc-500 hover:text-white">&times;</button>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">👤</span>
+              <div>
+                <h3 className="font-bold text-white">{selectedContact.phone}</h3>
+                {selectedContact.status === 'humano' && (
+                  <span className="text-xs font-semibold text-red-400 animate-pulse">⚡ Requiere atención humana</span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {selectedContact.status === 'humano' && (
+                <button
+                  onClick={async () => {
+                    await fetch(`/api/crm/contacts/${selectedContact.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'bot' }) });
+                    fetchContacts();
+                    setSelectedContact({ ...selectedContact, status: 'bot' });
+                  }}
+                  className="text-xs bg-green-600 hover:bg-green-500 text-white font-semibold px-3 py-1 rounded-lg transition-colors"
+                >
+                  🤖 Devolver al Bot
+                </button>
+              )}
+              <button onClick={() => setSelectedContact(null)} className="text-zinc-500 hover:text-white text-xl leading-none">&times;</button>
+            </div>
           </div>
           <div className="flex border-b border-zinc-800 bg-zinc-950 px-4 pt-2 gap-4 flex-shrink-0">
             <button className={`pb-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${sidebarTab === 'chat' ? 'border-zinc-300 text-white' : 'border-transparent text-zinc-500'}`} onClick={() => setSidebarTab('chat')}>Chat en Vivo</button>

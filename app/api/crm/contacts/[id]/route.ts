@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/supabase";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -45,16 +47,17 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const body = await req.json();
-    const { current_step_id, notas, name, is_test } = body;
+    const { current_step_id, notas, name, is_test, status } = body;
 
     // Obtener el estado actual para ver qué cambió
-    const { data: oldContact } = await supabase.from("crm_contacts").select("current_step_id, notas, name").eq("id", id).single();
+    const { data: oldContact } = await supabase.from("crm_contacts").select("current_step_id, notas, name, status").eq("id", id).single();
 
     const updateFields: any = { updated_at: new Date().toISOString() };
     if (current_step_id !== undefined) updateFields.current_step_id = current_step_id;
     if (notas !== undefined) updateFields.notas = notas;
     if (name !== undefined) updateFields.name = name;
     if (is_test !== undefined) updateFields.is_test = is_test;
+    if (status !== undefined) updateFields.status = status;
 
     const { data, error } = await supabase
       .from("crm_contacts")
@@ -79,6 +82,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         contact_id: id,
         tipo: "nota_agregada",
         descripcion: "Notas actualizadas"
+      }]);
+    }
+
+    if (oldContact && status !== undefined && oldContact.status !== status) {
+      await supabase.from("contact_events").insert([{
+        contact_id: id,
+        tipo: status === 'humano' ? "escalado_humano" : "devuelto_bot",
+        descripcion: status === 'humano' ? "Escalado manualmente a atención humana" : "Devuelto al flujo automático del bot"
       }]);
     }
 
