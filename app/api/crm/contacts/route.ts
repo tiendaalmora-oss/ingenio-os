@@ -20,7 +20,11 @@ export async function GET(req: Request) {
       `)
       .order("updated_at", { ascending: false });
 
-    if (funnel_id) query = query.eq("funnel_id", funnel_id);
+    if (funnel_id === "limbo") {
+      query = query.is("funnel_id", null);
+    } else if (funnel_id && funnel_id !== "all") {
+      query = query.eq("funnel_id", funnel_id);
+    }
     if (step_id) query = query.eq("current_step_id", step_id);
     if (is_test !== null) query = query.eq("is_test", is_test === "true");
     

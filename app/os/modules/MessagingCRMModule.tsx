@@ -7,7 +7,7 @@ type Tab = "funnels" | "contacts" | "templates" | "conversion";
 export function MessagingCRMModule() {
   const [activeTab, setActiveTab] = useState<Tab>("contacts");
   const [funnels, setFunnels] = useState<any[]>([]);
-  const [activeFunnelId, setActiveFunnelId] = useState<string>("");
+  const [activeFunnelId, setActiveFunnelId] = useState<string>("all");
   const [loadingFunnels, setLoadingFunnels] = useState(true);
   const [isCloning, setIsCloning] = useState(false);
 
@@ -17,7 +17,7 @@ export function MessagingCRMModule() {
       const data = await res.json();
       if (data.success && data.funnels.length > 0) {
         setFunnels(data.funnels);
-        setActiveFunnelId(data.funnels[0].id);
+        // Mantenemos "all" por defecto en vez de forzar el primer embudo
       }
     } catch (err) {
       console.error("Error al cargar embudos", err);
@@ -68,9 +68,13 @@ export function MessagingCRMModule() {
               onChange={(e) => setActiveFunnelId(e.target.value)}
               className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none"
             >
-              {funnels.map(f => (
-                <option key={f.id} value={f.id}>{f.nombre} ({f.producto})</option>
-              ))}
+              <option value="all">📥 Consola General (Todos)</option>
+              <option value="limbo">⏸ En el Limbo (Sin embudo)</option>
+              <optgroup label="Embudos Específicos">
+                {funnels.map(f => (
+                  <option key={f.id} value={f.id}>{f.nombre} ({f.producto})</option>
+                ))}
+              </optgroup>
             </select>
           </div>
         )}
@@ -139,12 +143,14 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
   const [conversations, setConversations] = useState<any[]>([]);
   const [sidebarTab, setSidebarTab] = useState<'chat' | 'info'>('chat');
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [replyMessage, setReplyMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId);
   const steps = activeFunnel?.funnel_steps || [];
 
   const fetchContacts = async () => {
-    if (!activeFunnelId) return;
+    // Si no hay funnel_id, no hacemos return, ya que ahora puede ser "all"
     setLoading(true);
     try {
       let url = `/api/crm/contacts?funnel_id=${activeFunnelId}`;
@@ -226,6 +232,42 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
       fetchContacts();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyMessage.trim() || !selectedContact) return;
+
+    setIsSending(true);
+    try {
+      const res = await fetch("/api/crm/conversations/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contact_id: selectedContact.id,
+          message: replyMessage
+        })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        setReplyMessage("");
+        // Agregar el nuevo mensaje a la UI temporalmente o recargar
+        setConversations(prev => [...prev, data.conversation]);
+        // Refrescar contactos por si cambió el estado a humano
+        fetchContacts();
+        if (selectedContact.status !== 'humano') {
+          setSelectedContact({ ...selectedContact, status: 'humano' });
+        }
+      } else {
+        alert("Error al enviar: " + data.error);
+      }
+    } catch (err) {
+      console.error("Error enviando mensaje", err);
+      alert("Error enviando mensaje");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -441,6 +483,26 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
                     )
                   })
                 )}
+              </div>
+              {/* Chat Reply Input */}
+              <div className="p-3 bg-[#1f2c34] flex-shrink-0 flex items-center gap-2">
+                <form onSubmit={handleSendMessage} className="flex flex-1 gap-2">
+                  <input
+                    type="text"
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder="Escribe un mensaje..."
+                    className="flex-1 bg-[#2a3942] text-[#d1d7db] rounded-lg px-4 py-2.5 text-sm focus:outline-none"
+                    disabled={isSending}
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={isSending || !replyMessage.trim()}
+                    className="bg-[#00a884] text-white rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center hover:bg-[#008f6f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSending ? "⌛" : "Enviar"}
+                  </button>
+                </form>
               </div>
             </div>
           )}
