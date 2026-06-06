@@ -191,8 +191,8 @@ export async function POST(req: Request) {
               .from("funnel_steps")
               .select("*")
               .eq("funnel_id", currentStep.funnel_id)
-              .gt("order_index", currentStep.order_index)
-              .order("order_index", { ascending: true })
+              .gt("orden", currentStep.orden)
+              .order("orden", { ascending: true })
               .limit(1)
               .single();
 
