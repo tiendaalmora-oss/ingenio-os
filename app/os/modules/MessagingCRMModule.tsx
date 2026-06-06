@@ -9,25 +9,45 @@ export function MessagingCRMModule() {
   const [funnels, setFunnels] = useState<any[]>([]);
   const [activeFunnelId, setActiveFunnelId] = useState<string>("");
   const [loadingFunnels, setLoadingFunnels] = useState(true);
+  const [isCloning, setIsCloning] = useState(false);
 
-  // Fetch Funnels on mount
-  useEffect(() => {
-    const fetchFunnels = async () => {
-      try {
-        const res = await fetch("/api/crm/funnels");
-        const data = await res.json();
-        if (data.success && data.funnels.length > 0) {
-          setFunnels(data.funnels);
-          setActiveFunnelId(data.funnels[0].id);
-        }
-      } catch (err) {
-        console.error("Error al cargar embudos", err);
-      } finally {
-        setLoadingFunnels(false);
+  const fetchFunnels = async () => {
+    try {
+      const res = await fetch("/api/crm/funnels");
+      const data = await res.json();
+      if (data.success && data.funnels.length > 0) {
+        setFunnels(data.funnels);
+        setActiveFunnelId(data.funnels[0].id);
       }
-    };
+    } catch (err) {
+      console.error("Error al cargar embudos", err);
+    } finally {
+      setLoadingFunnels(false);
+    }
+  };
+
+  useEffect(() => {
     fetchFunnels();
   }, []);
+
+  const cloneFunnel = async (id: string, name: string) => {
+    if (!name.trim()) return;
+    setIsCloning(true);
+    try {
+      const res = await fetch("/api/crm/funnels/clone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ funnel_id: id, new_name: name })
+      });
+      if (res.ok) {
+        fetchFunnels();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsCloning(false);
+    }
+  };
 
   return (
     <div className="p-8 h-[calc(100vh-73px)] overflow-hidden flex flex-col animate-fade-in">
@@ -613,6 +633,27 @@ function TemplatesView({ activeFunnelId, funnels }: { activeFunnelId: string, fu
    3. VISTA ESTRUCTURA (Funnels)
 ========================================= */
 function FunnelsView({ funnels, onRefresh }: { funnels: any[], onRefresh: () => void }) {
+  const [isCloning, setIsCloning] = useState(false);
+
+  const cloneFunnel = async (id: string, name: string) => {
+    if (!name.trim()) return;
+    setIsCloning(true);
+    try {
+      const res = await fetch("/api/crm/funnels/clone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ funnel_id: id, new_name: name })
+      });
+      if (res.ok) {
+        onRefresh();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsCloning(false);
+    }
+  };
+
   return (
     <div className="h-full overflow-y-auto p-4 max-w-4xl mx-auto space-y-8">
       {funnels.map(funnel => (
@@ -625,8 +666,20 @@ function FunnelsView({ funnels, onRefresh }: { funnels: any[], onRefresh: () => 
               </h3>
               <p className="text-zinc-400 text-sm">{funnel.descripcion} — Producto: <span className="font-mono text-zinc-300">{funnel.producto}</span></p>
             </div>
-            <div className="text-xs text-zinc-600 font-mono bg-zinc-950 px-2 py-1 rounded border border-zinc-800">
-              ID: {funnel.id.split("-")[0]}
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => {
+                  const cloneName = prompt("Nombre para el nuevo embudo clonado:", `${funnel.nombre} (Copia)`);
+                  if (cloneName) cloneFunnel(funnel.id, cloneName);
+                }}
+                disabled={isCloning}
+                className="bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded text-xs font-semibold transition-colors disabled:opacity-50"
+              >
+                {isCloning ? "⏳" : "📑 Duplicar"}
+              </button>
+              <div className="text-xs text-zinc-600 font-mono bg-zinc-950 px-2 py-1 rounded border border-zinc-800">
+                ID: {funnel.id.split("-")[0]}
+              </div>
             </div>
           </div>
 
