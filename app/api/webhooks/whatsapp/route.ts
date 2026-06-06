@@ -161,11 +161,11 @@ export async function POST(req: Request) {
       // 1. Obtener la etapa actual del contacto para ver si tiene configurada la IA
       const { data: currentStep } = await supabase
         .from("funnel_steps")
-        .select("*, funnels(ai_enabled)")
+        .select("*")
         .eq("id", contact.current_step_id)
         .single();
 
-      if (currentStep && currentStep.funnels?.ai_enabled) {
+      if (currentStep && currentStep.ai_goal) {
         try {
           const aiResult = await evaluateGatekeeper(chatHistory || [], currentStep, content || "");
 
