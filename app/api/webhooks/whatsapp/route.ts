@@ -79,29 +79,9 @@ export async function POST(req: Request) {
     if (!contact) {
       isNewContact = true;
       
-      // Clasificación Global
-      const { data: activeFunnels } = await supabase.from("funnels").select("*").eq("activo", true);
-      let assignedFunnelId = null;
-      let stepId = null;
-
-      if (activeFunnels && activeFunnels.length > 0) {
-        try {
-          assignedFunnelId = await classifyGlobalIntent(activeFunnels, content || "");
-        } catch (routerErr) {
-          console.error("Error en router IA:", routerErr);
-        }
-      }
-
-      if (assignedFunnelId) {
-        const { data: firstStep } = await supabase.from("funnel_steps").select("id").eq("funnel_id", assignedFunnelId).order("orden", { ascending: true }).limit(1).single();
-        if (firstStep) stepId = firstStep.id;
-      }
-
       const { data: newContact, error: insertError } = await supabase.from("crm_contacts").insert([{
         phone,
         name: pushName || "Sin nombre",
-        funnel_id: assignedFunnelId,
-        current_step_id: stepId,
         source: "whatsapp",
         is_test: isTestNumber,
         ultimo_mensaje: content,
@@ -110,14 +90,12 @@ export async function POST(req: Request) {
 
       contact = newContact;
 
-      // Registrar evento de lead nuevo
       await supabase.from("contact_events").insert([{
         contact_id: contact.id,
         tipo: "lead_entregado",
-        descripcion: "Lead nuevo ingresado vía WhatsApp y ruteado"
+        descripcion: "Lead nuevo ingresado vía WhatsApp"
       }]);
     } else {
-      // Si ya existía, actualizamos fecha de último contacto
       await supabase.from("crm_contacts").update({ 
         ultimo_mensaje: content,
         ultimo_contacto: new Date().toISOString() 
@@ -138,7 +116,6 @@ export async function POST(req: Request) {
     }
 
     // 3. Funnel Engine Lógico (Respuestas automáticas e IA)
-    // Obtener todo el historial reciente de la conversación
     const { data: chatHistory } = await supabase
       .from("crm_conversations")
       .select("*")
@@ -146,45 +123,59 @@ export async function POST(req: Request) {
       .order("created_at", { ascending: true })
       .limit(20);
 
-    if (isNewContact) {
-      if (contact.current_step_id) {
-        // Flujo tradicional para Contacto Nuevo con embudo asignado: Disparar la primera plantilla.
-        const { data: template } = await supabase
-          .from("bot_templates")
-          .select("*")
-          .eq("step_id", contact.current_step_id)
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .single();
+    // Si el contacto NO tiene embudo asignado (es nuevo o estaba en limbo por el fallback)
+    if (!contact.current_step_id && contact.status !== 'humano') {
+      const { data: activeFunnels } = await supabase.from("funnels").select("*").eq("activo", true);
+      let assignedFunnelId = null;
+      let stepId = null;
+
+      if (activeFunnels && activeFunnels.length > 0) {
+        try {
+          assignedFunnelId = await classifyGlobalIntent(activeFunnels, content || "");
+        } catch (routerErr) {
+          console.error("Error en router IA:", routerErr);
+        }
+      }
+
+      if (assignedFunnelId) {
+        // Enrutamiento exitoso
+        const { data: firstStep } = await supabase.from("funnel_steps").select("id").eq("funnel_id", assignedFunnelId).order("orden", { ascending: true }).limit(1).single();
+        if (firstStep) stepId = firstStep.id;
+
+        // Actualizamos el contacto para sacarlo del limbo
+        await supabase.from("crm_contacts").update({ funnel_id: assignedFunnelId, current_step_id: stepId }).eq("id", contact.id);
         
-        if (template && template.mensaje) {
-          // Enviar respuesta por WAHA usando el ID exacto que nos llegó
-          const sendResult = await sendWahaMessage(from, template.mensaje);
-          
-          // Guardar la respuesta saliente en la base de datos
+        if (stepId) {
+          const { data: template } = await supabase.from("bot_templates").select("*").eq("step_id", stepId).order("created_at", { ascending: true }).limit(1).single();
+          if (template && template.mensaje) {
+            const sendResult = await sendWahaMessage(from, template.mensaje);
+            await supabase.from("crm_conversations").insert([{
+              contact_id: contact.id,
+              direction: "outbound",
+              type: "text",
+              content: sendResult.success ? template.mensaje : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+              metadata: { template_id: template.id, sendResult }
+            }]);
+          }
+        }
+      } else {
+        // Router no entendió la intención
+        // Si es el PRIMER mensaje del usuario, enviamos bienvenida
+        if (isNewContact) {
+          const fallbackMsg = "¡Hola! Gracias por contactarte con nosotros. 👋\n\nContanos, ¿en qué te podemos ayudar el día de hoy?";
+          const sendResult = await sendWahaMessage(from, fallbackMsg);
           await supabase.from("crm_conversations").insert([{
             contact_id: contact.id,
             direction: "outbound",
             type: "text",
-            content: sendResult.success ? template.mensaje : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
-            metadata: { template_id: template.id, sendResult }
+            content: fallbackMsg,
+            metadata: { router_fallback: true }
           }]);
         }
-      } else {
-        // Contacto nuevo PERO el Router IA no pudo asignarle un embudo (mensaje genérico)
-        const fallbackMsg = "¡Hola! Gracias por contactarte con nosotros. 👋\n\nContanos, ¿en qué te podemos ayudar el día de hoy?";
-        const sendResult = await sendWahaMessage(from, fallbackMsg);
-        await supabase.from("crm_conversations").insert([{
-          contact_id: contact.id,
-          direction: "outbound",
-          type: "text",
-          content: fallbackMsg,
-          metadata: { router_fallback: true }
-        }]);
+        // Si no es el primer mensaje y sigue en limbo, no hacemos spam, esperamos a que diga palabras clave.
       }
-    } else if (!isNewContact && contact.current_step_id && contact.status !== 'humano') {
-      // Flujo de IA Guardián para contactos existentes que están en un paso del embudo
-      // 1. Obtener la etapa actual del contacto para ver si tiene configurada la IA
+    } else if (contact.current_step_id && contact.status !== 'humano') {
+      // Flujo de IA Guardián para contactos con embudo asignado
       const { data: currentStep } = await supabase
         .from("funnel_steps")
         .select("*")
@@ -196,7 +187,6 @@ export async function POST(req: Request) {
           const aiResult = await evaluateGatekeeper(chatHistory || [], currentStep, content || "");
 
           if (aiResult.accion === "avanzar") {
-            // Avanzar a la siguiente etapa
             const { data: nextStep } = await supabase
               .from("funnel_steps")
               .select("*")
@@ -207,17 +197,9 @@ export async function POST(req: Request) {
               .single();
 
             if (nextStep) {
-              // 1. Actualizamos el contacto
               await supabase.from("crm_contacts").update({ current_step_id: nextStep.id }).eq("id", contact.id);
 
-              // 2. Buscamos la plantilla de la nueva etapa
-              const { data: nextTemplate } = await supabase
-                .from("bot_templates")
-                .select("*")
-                .eq("step_id", nextStep.id)
-                .order("created_at", { ascending: true })
-                .limit(1)
-                .single();
+              const { data: nextTemplate } = await supabase.from("bot_templates").select("*").eq("step_id", nextStep.id).order("created_at", { ascending: true }).limit(1).single();
 
               if (nextTemplate && nextTemplate.mensaje) {
                 const sendResult = await sendWahaMessage(from, nextTemplate.mensaje);
@@ -231,7 +213,6 @@ export async function POST(req: Request) {
               }
             }
           } else if (aiResult.accion === "responder" && aiResult.respuesta_ia) {
-            // Enviar la respuesta de la IA (Atajador de objeciones)
             const sendResult = await sendWahaMessage(from, aiResult.respuesta_ia);
             await supabase.from("crm_conversations").insert([{
               contact_id: contact.id,
@@ -241,9 +222,7 @@ export async function POST(req: Request) {
               metadata: { ai_action: "responder", sendResult }
             }]);
           } else if (aiResult.accion === "humano") {
-            // Escalar a humano: Cambiar estado y no responder
             await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
-            // No enviamos mensaje automático
           }
         } catch (aiErr: any) {
           console.error("Error en evaluación de IA:", aiErr);
