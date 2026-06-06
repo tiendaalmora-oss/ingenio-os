@@ -16,7 +16,7 @@ export async function GET(req: Request) {
       .select(`
         *,
         funnels (nombre),
-        funnel_steps (nombre, key, color)
+        funnel_steps!current_step_id (nombre, key, color)
       `)
       .order("updated_at", { ascending: false });
 

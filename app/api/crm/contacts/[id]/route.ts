@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .select(`
         *,
         funnels (nombre),
-        funnel_steps (nombre, key, color)
+        funnel_steps!current_step_id (nombre, key, color)
       `)
       .eq("id", id)
       .single();
