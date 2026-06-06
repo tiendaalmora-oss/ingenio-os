@@ -7,7 +7,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const body = await req.json();
-    const { nombre, key, descripcion, orden, color, ai_goal, ai_valid_intents, ai_faq } = body;
+    const { nombre, key, descripcion, orden, color, ai_goal, ai_valid_intents, ai_faq, followup_delay_minutes, followup_template, followup_condition } = body;
 
     const updateFields: any = {};
     if (nombre !== undefined) updateFields.nombre = nombre;
@@ -18,6 +18,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (ai_goal !== undefined) updateFields.ai_goal = ai_goal;
     if (ai_valid_intents !== undefined) updateFields.ai_valid_intents = ai_valid_intents;
     if (ai_faq !== undefined) updateFields.ai_faq = ai_faq;
+    if (followup_delay_minutes !== undefined) updateFields.followup_delay_minutes = followup_delay_minutes;
+    if (followup_template !== undefined) updateFields.followup_template = followup_template;
+    if (followup_condition !== undefined) updateFields.followup_condition = followup_condition;
 
     const { data, error } = await supabase
       .from("funnel_steps")

@@ -718,6 +718,61 @@ function TemplatesView({ activeFunnelId, funnels }: { activeFunnelId: string, fu
                         </div>
                       </div>
 
+                      {/* Configuraciones de Drip / Seguimiento */}
+                      <div className="border border-zinc-800 rounded-lg bg-[#2a1b10]/20 p-4 space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">⏱️</span>
+                          <h4 className="font-bold text-sm text-[#ff9900] uppercase tracking-widest">Seguimiento Automático (Drip)</h4>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-semibold text-zinc-500">Tiempo de Espera (Minutos)</label>
+                            <input 
+                              type="number"
+                              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-xs text-zinc-300 focus:outline-none focus:border-zinc-600"
+                              placeholder="Ej: 30"
+                              defaultValue={step.followup_delay_minutes || ""}
+                              onBlur={(e) => {
+                                const val = e.target.value ? parseInt(e.target.value) : null;
+                                if (val !== step.followup_delay_minutes) {
+                                  updateStep(step.id, { followup_delay_minutes: val });
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-semibold text-zinc-500">Condición de Envío</label>
+                            <select 
+                              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-xs text-zinc-300 focus:outline-none focus:border-zinc-600"
+                              defaultValue={step.followup_condition || "always"}
+                              onChange={(e) => {
+                                if (e.target.value !== step.followup_condition) {
+                                  updateStep(step.id, { followup_condition: e.target.value });
+                                }
+                              }}
+                            >
+                              <option value="always">Siempre (Enviar sí o sí al pasar el tiempo)</option>
+                              <option value="no_reply">Solo si el cliente NO responde al mensaje previo</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2">
+                          <label className="text-xs font-semibold text-zinc-500">Mensaje de Seguimiento</label>
+                          <textarea 
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-sm text-zinc-300 font-mono resize-y focus:outline-none focus:border-zinc-600 min-h-[80px]"
+                            placeholder="Ej: Hola {nombre}, veo que no activaste tu demo. Si lo hacés hoy tenés un 20% OFF..."
+                            defaultValue={step.followup_template || ""}
+                            onBlur={(e) => {
+                              if (e.target.value !== (step.followup_template || "")) {
+                                updateStep(step.id, { followup_template: e.target.value });
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-zinc-500">Última actualización de plantilla: {new Date(template.updated_at).toLocaleString('es-AR')}</span>
                         <span className="text-xs text-green-500 font-medium bg-green-500/10 px-2 py-1 rounded border border-green-500/20">Se guarda automáticamente al quitar el foco</span>
