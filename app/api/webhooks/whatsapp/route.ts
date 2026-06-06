@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/supabase";
 import { evaluateGatekeeper } from "@/lib/ai/gatekeeper";
+import { classifyGlobalIntent } from "@/lib/ai/router";
 
 // Variables de entorno para conectar con WAHA (WhatsApp HTTP API)
 const WAHA_URL = process.env.WAHA_URL || "http://localhost:3000";
@@ -74,35 +75,45 @@ export async function POST(req: Request) {
     let isNewContact = false;
 
     if (!contact) {
-      // Obtenemos el embudo principal (el primero que exista activo)
-      const { data: mainFunnel } = await supabase.from("funnels").select("*").eq("activo", true).order("created_at", { ascending: true }).limit(1).single();
+      isNewContact = true;
       
-      if (mainFunnel) {
-        // Obtenemos la etapa inicial (la de menor orden)
-        const { data: firstStep } = await supabase.from("funnel_steps").select("*").eq("funnel_id", mainFunnel.id).order("orden", { ascending: true }).limit(1).single();
+      // Clasificación Global
+      const { data: activeFunnels } = await supabase.from("funnels").select("*").eq("activo", true);
+      let assignedFunnelId = null;
+      let stepId = null;
 
-        const newContactResult = await supabase
-          .from("crm_contacts")
-          .insert([{ 
-            phone, 
-            funnel_id: mainFunnel.id, 
-            current_step_id: firstStep ? firstStep.id : null,
-            ultimo_mensaje: content,
-            ultimo_contacto: new Date().toISOString()
-          }])
-          .select()
-          .single();
-        
-        contact = newContactResult.data;
-        isNewContact = true;
-        
-        // Registrar evento de lead nuevo
-        await supabase.from("contact_events").insert([{
-          contact_id: contact.id,
-          tipo: "lead_entregado",
-          descripcion: "Lead nuevo ingresado vía WhatsApp"
-        }]);
+      if (activeFunnels && activeFunnels.length > 0) {
+        try {
+          assignedFunnelId = await classifyGlobalIntent(activeFunnels, content || "");
+        } catch (routerErr) {
+          console.error("Error en router IA:", routerErr);
+        }
       }
+
+      if (assignedFunnelId) {
+        const { data: firstStep } = await supabase.from("funnel_steps").select("id").eq("funnel_id", assignedFunnelId).order("orden", { ascending: true }).limit(1).single();
+        if (firstStep) stepId = firstStep.id;
+      }
+
+      const { data: newContact, error: insertError } = await supabase.from("crm_contacts").insert([{
+        phone,
+        name: pushName || "Sin nombre",
+        funnel_id: assignedFunnelId,
+        current_step_id: stepId,
+        source: "whatsapp",
+        is_test: isTestNumber,
+        ultimo_mensaje: content,
+        ultimo_contacto: new Date().toISOString()
+      }]).select().single();
+
+      contact = newContact;
+
+      // Registrar evento de lead nuevo
+      await supabase.from("contact_events").insert([{
+        contact_id: contact.id,
+        tipo: "lead_entregado",
+        descripcion: "Lead nuevo ingresado vía WhatsApp y ruteado"
+      }]);
     } else {
       // Si ya existía, actualizamos fecha de último contacto
       await supabase.from("crm_contacts").update({ 
@@ -111,8 +122,8 @@ export async function POST(req: Request) {
       }).eq("id", contact.id);
     }
 
-    // 2. Registrar la conversación en la tabla de auditoría (Phase 2)
-    const { error: insertError } = await supabase.from("crm_conversations").insert([{
+    // 2. Registrar la conversación en la tabla de auditoría
+    const { error: insertMsgError } = await supabase.from("crm_conversations").insert([{
       contact_id: contact.id,
       direction: "inbound",
       type: type === "chat" || !type ? "text" : type,
@@ -120,8 +131,8 @@ export async function POST(req: Request) {
       metadata: body.payload
     }]);
 
-    if (insertError) {
-      console.error("Error guardando inbound en crm_conversations:", insertError);
+    if (insertMsgError) {
+      console.error("Error guardando inbound en crm_conversations:", insertMsgError);
     }
 
     // 3. Funnel Engine Lógico (Respuestas automáticas e IA)
@@ -133,27 +144,40 @@ export async function POST(req: Request) {
       .order("created_at", { ascending: true })
       .limit(20);
 
-    if (isNewContact && contact.current_step_id) {
-      // Flujo tradicional para Contacto Nuevo: Disparar la primera plantilla.
-      const { data: template } = await supabase
-        .from("bot_templates")
-        .select("*")
-        .eq("step_id", contact.current_step_id)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single();
-      
-      if (template && template.mensaje) {
-        // Enviar respuesta por WAHA usando el ID exacto que nos llegó
-        const sendResult = await sendWahaMessage(from, template.mensaje);
+    if (isNewContact) {
+      if (contact.current_step_id) {
+        // Flujo tradicional para Contacto Nuevo con embudo asignado: Disparar la primera plantilla.
+        const { data: template } = await supabase
+          .from("bot_templates")
+          .select("*")
+          .eq("step_id", contact.current_step_id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .single();
         
-        // Guardar la respuesta saliente en la base de datos
+        if (template && template.mensaje) {
+          // Enviar respuesta por WAHA usando el ID exacto que nos llegó
+          const sendResult = await sendWahaMessage(from, template.mensaje);
+          
+          // Guardar la respuesta saliente en la base de datos
+          await supabase.from("crm_conversations").insert([{
+            contact_id: contact.id,
+            direction: "outbound",
+            type: "text",
+            content: sendResult.success ? template.mensaje : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+            metadata: { template_id: template.id, sendResult }
+          }]);
+        }
+      } else {
+        // Contacto nuevo PERO el Router IA no pudo asignarle un embudo (mensaje genérico)
+        const fallbackMsg = "¡Hola! Gracias por contactarte con nosotros. 👋\n\nContanos, ¿en qué te podemos ayudar el día de hoy?";
+        const sendResult = await sendWahaMessage(from, fallbackMsg);
         await supabase.from("crm_conversations").insert([{
           contact_id: contact.id,
           direction: "outbound",
           type: "text",
-          content: sendResult.success ? template.mensaje : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
-          metadata: { template_id: template.id, sendResult }
+          content: fallbackMsg,
+          metadata: { router_fallback: true }
         }]);
       }
     } else if (!isNewContact && contact.current_step_id && contact.status !== 'humano') {
@@ -219,8 +243,15 @@ export async function POST(req: Request) {
             await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
             // No enviamos mensaje automático
           }
-        } catch (aiErr) {
+        } catch (aiErr: any) {
           console.error("Error en evaluación de IA:", aiErr);
+          await supabase.from("crm_conversations").insert([{
+            contact_id: contact.id,
+            direction: "outbound",
+            type: "text",
+            content: `[ERROR IA] Fallo al consultar el Gatekeeper: ${aiErr.message}`,
+            metadata: { error: true }
+          }]);
         }
       }
     }
