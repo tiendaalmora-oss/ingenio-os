@@ -9,9 +9,9 @@ const WAHA_API_KEY = process.env.WAHA_API_KEY || "";
 /**
  * Helper para enviar mensajes de texto a través de WAHA
  */
-async function sendWahaMessage(phone: string, text: string) {
+async function sendWahaMessage(chatId: string, text: string) {
   try {
-    const chatId = phone.includes("@c.us") ? phone : `${phone}@c.us`;
+    const finalChatId = chatId.includes("@") ? chatId : `${chatId}@c.us`;
     const wahaUrlBase = WAHA_URL.replace(/\/+$/, ''); // Remove trailing slashes
     
     const res = await fetch(`${wahaUrlBase}/api/sendText`, {
@@ -22,7 +22,7 @@ async function sendWahaMessage(phone: string, text: string) {
         ...(WAHA_API_KEY ? { "X-Api-Key": WAHA_API_KEY } : {})
       },
       body: JSON.stringify({
-        chatId: chatId,
+        chatId: finalChatId,
         text: text,
         session: WAHA_SESSION
       })
@@ -130,8 +130,8 @@ export async function POST(req: Request) {
         .single();
       
       if (template && template.mensaje) {
-        // Enviar respuesta por WAHA
-        const sendResult = await sendWahaMessage(phone, template.mensaje);
+        // Enviar respuesta por WAHA usando el ID exacto que nos llegó (ej: @lid o @c.us)
+        const sendResult = await sendWahaMessage(from, template.mensaje);
         
         // Guardar la respuesta saliente en la base de datos
         await supabase.from("crm_conversations").insert([{
