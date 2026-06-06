@@ -136,8 +136,19 @@ export async function POST(req: Request) {
         }]);
       }
 
-      // Responder pidiendo que escriban el texto
-      const multimediaMsg = `¡Hola${pushName ? " " + pushName : ""}! 👋 Por el momento nuestro asistente solo puede procesar mensajes de texto.\n\n✍️ ¿Podés escribirnos tu consulta? ¡Te ayudamos enseguida!`;
+      // Responder con mensaje empático según el tipo de multimedia
+      let multimediaMsg = "";
+      if (type === "audio" || type === "ptt") {
+        multimediaMsg = `Hola${pushName ? " " + pushName : ""} 👋 Disculpá, por el momento no puedo escuchar tu audio, pero no te preocupes — en cuanto un asesor esté disponible lo va a escuchar y te va a responder. 🙏`;
+      } else if (type === "image") {
+        multimediaMsg = `Hola${pushName ? " " + pushName : ""} 👋 Recibimos tu imagen. Por ahora no puedo verla, pero en cuanto un asesor esté disponible la va a revisar y te contacta. 🙏`;
+      } else if (type === "video") {
+        multimediaMsg = `Hola${pushName ? " " + pushName : ""} 👋 Recibimos tu video. En cuanto un asesor esté disponible lo va a ver y te responde. 🙏`;
+      } else if (type === "document") {
+        multimediaMsg = `Hola${pushName ? " " + pushName : ""} 👋 Recibimos tu documento. Un asesor lo va a revisar y te responde a la brevedad. 🙏`;
+      } else {
+        multimediaMsg = `Hola${pushName ? " " + pushName : ""} 👋 Recibimos tu mensaje. Un asesor lo va a atender en breve. 🙏`;
+      }
       await sendWahaMessage(from, multimediaMsg);
 
       if (contactCheck) {
@@ -146,7 +157,15 @@ export async function POST(req: Request) {
           direction: "outbound",
           type: "text",
           content: multimediaMsg,
-          metadata: { multimedia_fallback: true }
+          metadata: { multimedia_fallback: true, original_type: type }
+        }]);
+
+        // Escalamos a humano para que un asesor real vea el audio/imagen
+        await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contactCheck.id);
+        await supabase.from("contact_events").insert([{
+          contact_id: contactCheck.id,
+          tipo: "escalado_humano",
+          descripcion: `Cliente envió multimedia (${type}). Requiere revisión humana.`
         }]);
       }
 
