@@ -30,6 +30,14 @@ export function MessagingCRMModule() {
     fetchFunnels();
   }, []);
 
+  useEffect(() => {
+    if (activeTab !== "contacts" && (activeFunnelId === "all" || activeFunnelId === "limbo")) {
+      if (funnels.length > 0) {
+        setActiveFunnelId(funnels[0].id);
+      }
+    }
+  }, [activeTab, activeFunnelId, funnels]);
+
   const cloneFunnel = async (id: string, name: string) => {
     if (!name.trim()) return;
     setIsCloning(true);
@@ -68,8 +76,12 @@ export function MessagingCRMModule() {
               onChange={(e) => setActiveFunnelId(e.target.value)}
               className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none"
             >
-              <option value="all">📥 Consola General (Todos)</option>
-              <option value="limbo">⏸ En el Limbo (Sin embudo)</option>
+              {activeTab === "contacts" && (
+                <>
+                  <option value="all">📥 Consola General (Todos)</option>
+                  <option value="limbo">⏸ En el Limbo (Sin embudo)</option>
+                </>
+              )}
               <optgroup label="Embudos Específicos">
                 {funnels.map(f => (
                   <option key={f.id} value={f.id}>{f.nombre} ({f.producto})</option>
