@@ -44,7 +44,7 @@ const SYSTEM_ROUTES = [
 /** Paths to skip — _next assets, api, static files, favicon, and legacy folder */
 const SKIP_PATTERN = /^\/((_next|api|favicon\.ico|robots\.txt|sitemap\.xml|legacy))/;
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip Next.js internals and static assets
@@ -56,9 +56,45 @@ export function proxy(request: NextRequest) {
 
   // Strip port if present (e.g. localhost:3000 → localhost)
   const hostname = host.split(":")[0];
+  const cleanHostname = hostname.replace(/^www\./, "");
+
+  // ---- CUSTOM DOMAIN ROUTING (via Supabase) ----
+  // If it's not a root domain and not an ingenio subdomain, it must be a custom domain (e.g. miebook.com)
+  if (
+    !ROOT_DOMAINS.includes(cleanHostname) && 
+    !cleanHostname.endsWith(".ingeniodigital.shop") && 
+    !cleanHostname.endsWith(".localhost")
+  ) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const res = await fetch(
+          `${supabaseUrl}/rest/v1/products?select=slug&deployment_domain=eq.${cleanHostname}`,
+          {
+            headers: {
+              apikey: supabaseKey,
+              Authorization: `Bearer ${supabaseKey}`
+            },
+            next: { revalidate: 60 } // Cachear por 60s
+          }
+        );
+        const products = await res.json();
+        if (products && products.length > 0 && products[0].slug) {
+          const product = products[0];
+          const url = request.nextUrl.clone();
+          url.pathname = `/${product.slug}${url.pathname === '/' ? '' : url.pathname}`;
+          return NextResponse.rewrite(url);
+        }
+      } catch (err) {
+        console.error("Error consultando dominio personalizado en proxy:", err);
+      }
+    }
+  }
+  // ----------------------------------------------
 
   // Determine if we're on a root domain
-  if (ROOT_DOMAINS.includes(hostname)) {
+  if (ROOT_DOMAINS.includes(cleanHostname)) {
     // ---- PASSWORD PROTECTION (Dashboard only) ----
     // Only protect dashboard routes starting with /os
     if (pathname.startsWith("/os")) {
