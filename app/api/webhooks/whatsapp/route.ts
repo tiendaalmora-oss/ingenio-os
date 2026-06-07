@@ -260,9 +260,13 @@ async function processMessageBackground(body: any) {
     if (!contact.current_step_id && contact.status !== 'humano') {
       
       // PARCHE DE SEGURIDAD MÁXIMA (Activable temporalmente)
-      // Solo activar el bot si el mensaje contiene la frase exacta de la campaña
-      const cleanContent = (content || "").toLowerCase().trim();
-      if (!cleanContent.includes("quiero la demo de avios")) {
+      // Solo activar el bot si el mensaje contiene la frase de la campaña (ignorando tildes y mayúsculas)
+      const cleanContent = (content || "")
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quita tildes (avíos -> avios)
+        .trim();
+        
+      if (!cleanContent.includes("quiero la demo de avios") && !cleanContent.includes("quiero la demo")) {
         // No es el mensaje de la campaña. Lo pasamos a humano para que el bot no moleste.
         await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
         await supabase.from("contact_events").insert([{
