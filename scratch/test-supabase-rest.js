@@ -14,10 +14,10 @@ async function test() {
   console.log("Steps with drip:", steps.map(s => ({ id: s.id, nombre: s.nombre, delay: s.followup_delay_minutes })));
 
   // 2. Get contacts in bot status
-  const contactsRes = await fetch(`${supabaseUrl}/rest/v1/crm_contacts?select=id,phone,ultimo_contacto,current_step_id,last_followup_step_id,status`, {
+  const convRes = await fetch(`${supabaseUrl}/rest/v1/crm_conversations?contact_id=eq.fe65bc37-07b5-42c7-94b5-fe1ce8219ba5&select=direction,content,created_at&order=created_at.desc&limit=5`, {
     headers: { 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` }
   });
-  const contacts = await contactsRes.json();
-  console.log("Contacts in bot status:", contacts);
+  const convs = await convRes.json();
+  console.log("Conversations:", convs);
 }
 test();

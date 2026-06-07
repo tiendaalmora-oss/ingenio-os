@@ -110,9 +110,24 @@ export async function GET(req: Request) {
           // Reemplazar variables (por ahora solo nombre)
           const msgText = step.followup_template.replace(/\{nombre\}/gi, contact.name || "");
           
-          console.log(`[DRIP ENGINE] Enviando seguimiento a ${contact.phone} (Etapa: ${step.nombre})`);
+          // Buscar el ID real de WhatsApp (con @c.us o @lid) desde el último mensaje entrante
+          let realChatId = contact.phone;
+          const { data: lastInbound } = await supabase
+            .from("crm_conversations")
+            .select("metadata")
+            .eq("contact_id", contact.id)
+            .eq("direction", "inbound")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+            
+          if (lastInbound && lastInbound.metadata && lastInbound.metadata.from) {
+            realChatId = lastInbound.metadata.from;
+          }
+
+          console.log(`[DRIP ENGINE] Enviando seguimiento a ${realChatId} (Etapa: ${step.nombre})`);
           
-          const sendResult = await sendWahaMessage(contact.phone, msgText);
+          const sendResult = await sendWahaMessage(realChatId, msgText);
           
           if (sendResult.success) {
             // Guardar en conversacion
