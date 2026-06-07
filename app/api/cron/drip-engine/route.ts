@@ -73,7 +73,7 @@ export async function GET(req: Request) {
         .from("crm_contacts")
         .select("id, phone, name, ultimo_contacto, last_followup_step_id")
         .eq("current_step_id", step.id)
-        .eq("status", "bot")
+        .eq("status", "activo")
         .lt("ultimo_contacto", cutoffTime);
         
       if (contactsError) {
