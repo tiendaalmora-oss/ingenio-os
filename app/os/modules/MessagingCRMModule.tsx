@@ -132,7 +132,7 @@ export function MessagingCRMModule() {
         ) : (
           <>
             {activeTab === "contacts" && <ContactsView activeFunnelId={activeFunnelId} funnels={funnels} />}
-            {activeTab === "templates" && <TemplatesView activeFunnelId={activeFunnelId} funnels={funnels} />}
+            {activeTab === "templates" && <TemplatesView activeFunnelId={activeFunnelId} funnels={funnels} onRefresh={fetchFunnels} />}
             {activeTab === "funnels" && <FunnelsView funnels={funnels} onRefresh={() => window.location.reload()} />}
             {activeTab === "conversion" && <ConversionView activeFunnelId={activeFunnelId} funnels={funnels} />}
           </>
@@ -527,16 +527,16 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
 /* =========================================
    2. VISTA TEMPLATES
 ========================================= */
-function TemplatesView({ activeFunnelId, funnels }: { activeFunnelId: string, funnels: any[] }) {
+function TemplatesView({ activeFunnelId, funnels, onRefresh }: { activeFunnelId: string, funnels: any[], onRefresh: () => void }) {
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const activeFunnel = funnels.find(f => f.id === activeFunnelId);
   const steps = activeFunnel?.funnel_steps || [];
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = async (showLoading = true) => {
     if (!activeFunnelId) return;
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const res = await fetch(`/api/crm/templates?funnel_id=${activeFunnelId}`);
       const data = await res.json();
@@ -546,12 +546,12 @@ function TemplatesView({ activeFunnelId, funnels }: { activeFunnelId: string, fu
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTemplates();
+    fetchTemplates(true);
   }, [activeFunnelId]);
 
   const updateStep = async (id: string, updates: any) => {
@@ -561,7 +561,7 @@ function TemplatesView({ activeFunnelId, funnels }: { activeFunnelId: string, fu
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates)
       });
-      fetchTemplates();
+      onRefresh(); // Actualiza funnels en background sin parpadear
     } catch (err) {
       console.error(err);
     }
@@ -574,7 +574,7 @@ function TemplatesView({ activeFunnelId, funnels }: { activeFunnelId: string, fu
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...updates })
       });
-      fetchTemplates();
+      fetchTemplates(false);
     } catch (err) {
       console.error(err);
     }
@@ -594,7 +594,7 @@ function TemplatesView({ activeFunnelId, funnels }: { activeFunnelId: string, fu
           orden: step.orden
         })
       });
-      fetchTemplates();
+      fetchTemplates(false);
     } catch (err) {
       console.error(err);
     }
