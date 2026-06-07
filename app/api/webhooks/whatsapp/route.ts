@@ -240,6 +240,21 @@ export async function POST(req: Request) {
     // FLUJO A: Contacto sin embudo asignado (limbo)
     // ==============================================================
     if (!contact.current_step_id && contact.status !== 'humano') {
+      
+      // PARCHE DE SEGURIDAD MÁXIMA (Activable temporalmente)
+      // Solo activar el bot si el mensaje contiene la frase exacta de la campaña
+      const cleanContent = (content || "").toLowerCase().trim();
+      if (!cleanContent.includes("quiero la demo de avios")) {
+        // No es el mensaje de la campaña. Lo pasamos a humano para que el bot no moleste.
+        await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
+        await supabase.from("contact_events").insert([{
+          contact_id: contact.id,
+          tipo: "escalado_humano",
+          descripcion: "Ignorado por seguridad (No usó la frase clave de la campaña)"
+        }]);
+        return NextResponse.json({ success: true, message: "Ignorado por seguridad (no keyword)" });
+      }
+
       const { data: activeFunnels } = await supabase.from("funnels").select("*").eq("activo", true);
       let assignedFunnelId = null;
       let stepId = null;
