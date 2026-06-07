@@ -28,6 +28,9 @@ const MULTIMEDIA_TYPES = ["audio", "ptt", "image", "video", "document", "sticker
  */
 async function sendWahaMessage(chatId: string, text: string) {
   try {
+    // Retraso artificial de 7 segundos para simular que un humano está escribiendo
+    await new Promise(resolve => setTimeout(resolve, 7000));
+
     const finalChatId = chatId.includes("@") ? chatId : `${chatId}@c.us`;
     const wahaUrlBase = WAHA_URL.replace(/\/+$/, '');
     
