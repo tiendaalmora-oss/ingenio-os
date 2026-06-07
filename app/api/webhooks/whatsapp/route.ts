@@ -487,7 +487,6 @@ async function processMessageBackground(body: any) {
         }
       }
     }
-    }
 
     // Fin del procesamiento asíncrono
   } catch (err: any) {
