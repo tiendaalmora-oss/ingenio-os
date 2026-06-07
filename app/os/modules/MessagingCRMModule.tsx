@@ -365,15 +365,25 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
                       </td>
                       <td className="px-4 py-3">
                         <select 
-                          className="bg-transparent border border-zinc-700 rounded px-2 py-1 text-xs font-medium focus:outline-none"
+                          className="bg-transparent border border-zinc-700 rounded px-2 py-1 text-xs font-medium focus:outline-none max-w-[150px] truncate"
                           style={{ color: step?.color || '#fff' }}
                           value={c.current_step_id || ""}
                           onChange={(e) => { e.stopPropagation(); changeContactStep(c.id, e.target.value); }}
                         >
                           <option value="">Sin etapa</option>
-                          {steps.map((s: any) => (
-                            <option key={s.id} value={s.id} style={{ color: '#fff' }}>{s.nombre}</option>
-                          ))}
+                          {activeFunnelId === "all" || activeFunnelId === "limbo" ? (
+                            funnels.map(f => (
+                              <optgroup key={f.id} label={f.nombre}>
+                                {(f.funnel_steps || []).map((s: any) => (
+                                  <option key={s.id} value={s.id}>{s.nombre}</option>
+                                ))}
+                              </optgroup>
+                            ))
+                          ) : (
+                            steps.map((s: any) => (
+                              <option key={s.id} value={s.id} style={{ color: '#fff' }}>{s.nombre}</option>
+                            ))
+                          )}
                         </select>
                       </td>
                       <td className="px-4 py-3 text-xs text-zinc-400">
@@ -410,7 +420,7 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {selectedContact.status === 'humano' && (
+              {selectedContact.status === 'humano' ? (
                 <button
                   onClick={async () => {
                     await fetch(`/api/crm/contacts/${selectedContact.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'bot' }) });
@@ -421,8 +431,33 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
                 >
                   🤖 Devolver al Bot
                 </button>
+              ) : (
+                <button
+                  onClick={async () => {
+                    await fetch(`/api/crm/contacts/${selectedContact.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'humano' }) });
+                    fetchContacts();
+                    setSelectedContact({ ...selectedContact, status: 'humano' });
+                  }}
+                  className="text-xs bg-orange-600/50 hover:bg-orange-600 text-white font-semibold px-3 py-1 rounded-lg transition-colors border border-orange-600"
+                >
+                  ⏸ Pausar Bot
+                </button>
               )}
-              <button onClick={() => setSelectedContact(null)} className="text-zinc-500 hover:text-white text-xl leading-none">&times;</button>
+              
+              <button
+                onClick={async () => {
+                  if(!confirm("¿Eliminar este contacto permanentemente?")) return;
+                  await fetch(`/api/crm/contacts/${selectedContact.id}`, { method: 'DELETE' });
+                  fetchContacts();
+                  setSelectedContact(null);
+                }}
+                className="text-xs bg-red-600/30 hover:bg-red-600 text-red-200 font-semibold p-1.5 rounded-lg transition-colors"
+                title="Eliminar Contacto"
+              >
+                🗑️
+              </button>
+
+              <button onClick={() => setSelectedContact(null)} className="text-zinc-500 hover:text-white text-xl leading-none ml-2">&times;</button>
             </div>
           </div>
           <div className="flex border-b border-zinc-800 bg-zinc-950 px-4 pt-2 gap-4 flex-shrink-0">

@@ -83,8 +83,12 @@ export async function DELETE(req: Request) {
 
     let query = supabase.from("crm_contacts").delete().eq("is_test", true);
     
-    if (funnel_id) {
-      query = query.eq("funnel_id", funnel_id);
+    if (funnel_id && funnel_id !== "all") {
+      if (funnel_id === "limbo") {
+        query = query.is("funnel_id", null);
+      } else {
+        query = query.eq("funnel_id", funnel_id);
+      }
     }
 
     const { error } = await query;
