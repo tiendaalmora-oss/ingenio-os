@@ -67,14 +67,14 @@ export async function GET(req: Request) {
       // Buscar contactos que:
       // a) Están en esta etapa (current_step_id = step.id)
       // b) No han recibido seguimiento para esta etapa (last_followup_step_id != step.id OR last_followup_step_id is null)
-      // c) El tiempo de su última actualización (updated_at) es anterior al cutoffTime.
+      // c) El tiempo de su último contacto (ultimo_contacto) es anterior al cutoffTime.
       // d) Su status sea 'bot' (si es 'humano' no interrumpimos).
       const { data: eligibleContacts, error: contactsError } = await supabase
         .from("crm_contacts")
-        .select("id, phone, name, updated_at, last_followup_step_id")
+        .select("id, phone, name, ultimo_contacto, last_followup_step_id")
         .eq("current_step_id", step.id)
         .eq("status", "bot")
-        .lt("updated_at", cutoffTime);
+        .lt("ultimo_contacto", cutoffTime);
         
       if (contactsError) {
         console.error(`[DRIP ENGINE] Error buscando contactos para etapa ${step.id}:`, contactsError);
