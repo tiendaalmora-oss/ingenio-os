@@ -79,9 +79,6 @@ function interpolateTemplate(text: string, contact: any): string {
     .replace(/\{phone\}/gi, contact.phone || "");
 }
 
-/**
- * Webhook para recibir mensajes entrantes de WAHA
- */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -92,14 +89,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: "No es un mensaje entrante" });
     }
 
-    const { from, body: content, type, fromMe } = body.payload;
-    const pushName = body.payload._data?.notifyName || body.payload.notifyName || body.payload.pushName || "";
-    const isTestNumber = false;
+    const { fromMe } = body.payload;
 
     // Ignorar mensajes enviados por el propio bot
     if (fromMe) {
       return NextResponse.json({ success: true });
     }
+
+    // 🔥 EJECUCIÓN EN SEGUNDO PLANO 🔥
+    // Lanzamos la promesa y no la esperamos (no usamos await).
+    // Esto permite responder a WAHA inmediatamente con un 200 OK, 
+    // evitando que WAHA haga "timeouts" y mande mensajes duplicados por el retraso de 7 segundos.
+    processMessageBackground(body).catch(err => console.error("Error en procesamiento bg:", err));
+
+    return NextResponse.json({ success: true, message: "Procesando en bg" });
+
+  } catch (error: any) {
+    console.error("Error crítico en webhook POST:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+/**
+ * Toda la lógica pesada (IA, Base de Datos, Retrasos artificiales) va acá
+ */
+async function processMessageBackground(body: any) {
+  try {
+    const { from, body: content, type } = body.payload;
+    const pushName = body.payload._data?.notifyName || body.payload.notifyName || body.payload.pushName || "";
+    const isTestNumber = false;
 
     // Limpiar el teléfono
     const phone = from.split("@")[0];
@@ -469,10 +487,10 @@ export async function POST(req: Request) {
         }
       }
     }
+    }
 
-    return NextResponse.json({ success: true });
+    // Fin del procesamiento asíncrono
   } catch (err: any) {
-    console.error("Error procesando webhook:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error("Error crítico en proceso de fondo webhook:", err);
   }
 }
