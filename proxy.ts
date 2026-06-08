@@ -81,10 +81,30 @@ export async function proxy(request: NextRequest) {
         );
         const products = await res.json();
         if (products && products.length > 0 && products[0].slug) {
-          const product = products[0];
-          const url = request.nextUrl.clone();
-          url.pathname = `/${product.slug}${url.pathname === '/' ? '' : url.pathname}`;
-          return NextResponse.rewrite(url);
+          const project = products[0].slug;
+          let targetPath: string | null = null;
+          
+          const parts = pathname.split("/").filter(Boolean);
+          
+          if (parts.length === 0) {
+            targetPath = `/legacy/${project}/landing/index.html`;
+          } else if (parts[0] === "demo") {
+            const remaining = parts.slice(1).join("/");
+            targetPath = remaining ? `/legacy/${project}/demo/${remaining}` : `/legacy/${project}/demo/index.html`;
+          } else if (parts[0] === "manual") {
+            const remaining = parts.slice(1).join("/");
+            targetPath = remaining ? `/legacy/${project}/manual/${remaining}` : `/legacy/${project}/manual/index.html`;
+          } else if (parts[0] === "app") {
+            // No rescribir
+          } else {
+            targetPath = `/legacy/${project}/landing/${parts.join("/")}`;
+          }
+
+          if (targetPath) {
+            const url = request.nextUrl.clone();
+            url.pathname = targetPath;
+            return NextResponse.rewrite(url);
+          }
         }
       } catch (err) {
         console.error("Error consultando dominio personalizado en proxy:", err);
