@@ -7,6 +7,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const funnel_id = searchParams.get("funnel_id");
+    const tag = searchParams.get("tag");
     const step_id = searchParams.get("step_id");
     const is_test = searchParams.get("is_test");
     const search = searchParams.get("search");
@@ -20,11 +21,17 @@ export async function GET(req: Request) {
       `)
       .order("updated_at", { ascending: false });
 
-    if (funnel_id === "limbo") {
-      query = query.is("funnel_id", null);
-    } else if (funnel_id && funnel_id !== "all") {
-      query = query.eq("funnel_id", funnel_id);
+    if (tag && tag !== "all") {
+      query = query.contains("tags", [tag]);
+    } else if (!tag) {
+      // Fallback for legacy funnel_id filtering
+      if (funnel_id === "limbo") {
+        query = query.is("funnel_id", null);
+      } else if (funnel_id && funnel_id !== "all") {
+        query = query.eq("funnel_id", funnel_id);
+      }
     }
+    
     if (step_id) query = query.eq("current_step_id", step_id);
     if (is_test !== null) query = query.eq("is_test", is_test === "true");
     

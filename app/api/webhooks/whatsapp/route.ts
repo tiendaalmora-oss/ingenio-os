@@ -296,7 +296,17 @@ async function processMessageBackground(body: any) {
         const { data: firstStep } = await supabase.from("funnel_steps").select("id").eq("funnel_id", assignedFunnelId).order("orden", { ascending: true }).limit(1).single();
         if (firstStep) stepId = firstStep.id;
 
-        await supabase.from("crm_contacts").update({ funnel_id: assignedFunnelId, current_step_id: stepId }).eq("id", contact.id);
+        const assignedFunnel = activeFunnels?.find(f => f.id === assignedFunnelId);
+        const newTag = assignedFunnel ? `Interesado ${assignedFunnel.producto}` : "Nuevo Lead";
+        
+        const currentTags = Array.isArray(contact.tags) ? contact.tags : [];
+        const updatedTags = currentTags.includes(newTag) ? currentTags : [...currentTags, newTag];
+
+        await supabase.from("crm_contacts").update({ 
+          funnel_id: assignedFunnelId, 
+          current_step_id: stepId,
+          tags: updatedTags 
+        }).eq("id", contact.id);
         
         if (stepId) {
           const { data: template } = await supabase.from("bot_templates").select("*").eq("step_id", stepId).order("created_at", { ascending: true }).limit(1).single();

@@ -166,6 +166,9 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
     setLoading(true);
     try {
       let url = `/api/crm/contacts?funnel_id=${activeFunnelId}`;
+      if (activeFunnelId !== 'all' && activeFunnelId !== 'limbo' && activeFunnel) {
+        url += `&tag=${encodeURIComponent(`Interesado ${activeFunnel.producto}`)}`;
+      }
       if (activeStepFilter) url += `&step_id=${activeStepFilter}`;
       if (search) url += `&search=${search}`;
       
