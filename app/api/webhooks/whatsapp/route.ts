@@ -261,41 +261,43 @@ async function processMessageBackground(body: any) {
     // ==============================================================
     if (!contact.current_step_id && contact.status !== 'humano') {
       
-      // PARCHE DE SEGURIDAD MÁXIMA (Activable temporalmente)
-      // Solo activar el bot si el mensaje contiene la frase de la campaña (ignorando tildes y mayúsculas)
-      const cleanContent = (content || "")
-        .toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // quita tildes (avíos -> avios)
-        .trim();
-        
-      if (!cleanContent.includes("quiero la demo de avios") && !cleanContent.includes("quiero la demo")) {
-        // No es el mensaje de la campaña. Lo pasamos a humano para que el bot no moleste.
-        await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
-        await supabase.from("contact_events").insert([{
-          contact_id: contact.id,
-          tipo: "escalado_humano",
-          descripcion: "Ignorado por seguridad (No usó la frase clave de la campaña)"
-        }]);
-        return NextResponse.json({ success: true, message: "Ignorado por seguridad (no keyword)" });
-      }
-
       const { data: activeFunnels } = await supabase.from("funnels").select("*").eq("activo", true);
-      let assignedFunnelId = null;
-      let stepId = null;
+      let routerResult = { action: "generic", funnel_id: null };
 
       if (activeFunnels && activeFunnels.length > 0) {
         try {
-          assignedFunnelId = await classifyGlobalIntent(activeFunnels, content || "");
+          routerResult = await classifyGlobalIntent(activeFunnels, content || "");
         } catch (routerErr) {
           console.error("Error en router IA:", routerErr);
         }
       }
 
-      if (assignedFunnelId) {
-        // ✅ Router identificó el embudo
+      if (routerResult.action === "human") {
+        await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
+        const humanMsg = "Entendido. Un asesor se pondrá en contacto contigo a la brevedad para ayudarte con esto.";
+        const sendResult = await sendWahaMessage(from, humanMsg);
+        await supabase.from("crm_conversations").insert([{
+          contact_id: contact.id,
+          direction: "outbound",
+          type: "text",
+          content: humanMsg,
+          metadata: { escalated_to_human: true, reason: "router_decision", sendResult }
+        }]);
+        await supabase.from("contact_events").insert([{
+          contact_id: contact.id,
+          tipo: "escalado_humano",
+          descripcion: "Enviado a soporte/humano por decisión del Router IA inicial."
+        }]);
+        return NextResponse.json({ success: true, handled: "router_human" });
+      }
+
+      if (routerResult.action === "funnel" && routerResult.funnel_id) {
+        const assignedFunnelId = routerResult.funnel_id;
+        let stepId = null;
+
         const { data: firstStep } = await supabase.from("funnel_steps").select("id").eq("funnel_id", assignedFunnelId).order("orden", { ascending: true }).limit(1).single();
         if (firstStep) stepId = firstStep.id;
-
+        
         const assignedFunnel = activeFunnels?.find(f => f.id === assignedFunnelId);
         const newTag = assignedFunnel ? `Interesado ${assignedFunnel.producto}` : "Nuevo Lead";
         
@@ -323,7 +325,7 @@ async function processMessageBackground(body: any) {
           }
         }
       } else {
-        // ❌ Router no pudo identificar intención
+        // ❌ Router no pudo identificar intención de venta (generic)
 
         if (isNewContact || inboundCount === 1) {
           // 🆕 Primer mensaje → bienvenida genérica

@@ -1,7 +1,7 @@
 export async function classifyGlobalIntent(
   funnels: any[],
   userMessage: string
-): Promise<string | null> {
+): Promise<{ action: string, funnel_id: string | null }> {
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
   const rawModel = process.env.OPENROUTER_MODEL || "";
   const DEFAULT_MODEL = rawModel.trim().replace(/\.+$/, "") || "openai/gpt-4o-mini";
@@ -14,20 +14,21 @@ export async function classifyGlobalIntent(
   const funnelsList = funnels.map(f => `- ID: "${f.id}" | Nombre: "${f.nombre}" | Producto/Servicio: "${f.producto || f.descripcion}"`).join("\n");
 
   const systemPrompt = `Eres un Enrutador Inteligente (Router AI) de atención al cliente.
-Tu trabajo es leer el primer mensaje de un cliente nuevo y decidir a cuál de nuestros embudos (funnels) de venta o soporte corresponde, devolviendo únicamente el ID del embudo en formato JSON.
+Tu trabajo es leer el primer mensaje de un cliente nuevo y decidir cuál es la acción correcta, devolviendo ÚNICAMENTE un JSON válido.
 
 EMBUDOS DISPONIBLES:
 ${funnelsList}
 
 REGLAS ESTRICTAS:
-1. Analiza el mensaje del usuario.
-2. Si el mensaje menciona explícitamente algún producto, servicio o intención que coincide con alguno de los embudos disponibles, devuelve su ID.
-3. Si el usuario solo dice "Hola", "Buen día" o manda un mensaje genérico sin especificar qué quiere, devuelve null.
-4. Tu respuesta debe ser EXCLUSIVAMENTE un objeto JSON válido, sin formato markdown (\`\`\`json).
+1. Si el mensaje menciona explícitamente interés en algún producto o servicio de los embudos disponibles (ej. "quiero la demo", "info de avios"), devuelve action="funnel" y el funnel_id correspondiente.
+2. Si el usuario solo dice "Hola", "Buen día" o manda un mensaje genérico sin especificar NADA, devuelve action="generic" y funnel_id=null.
+3. Si el cliente plantea un problema técnico, soporte, pagos, "necesito licencia", o cualquier consulta puntual QUE NO SEA UN EMBUDO DE VENTA, devuelve action="human" y funnel_id=null.
+4. Tu respuesta debe ser EXCLUSIVAMENTE un objeto JSON válido, sin markdown.
 
 Formato de Respuesta JSON esperado:
 {
-  "funnel_id": "ID-DEL-EMBUDO" // o null si no se entiende la intención
+  "action": "funnel" | "generic" | "human",
+  "funnel_id": "ID-DEL-EMBUDO" // O null
 }`;
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -69,9 +70,12 @@ Formato de Respuesta JSON esperado:
 
   try {
     const result = JSON.parse(rawContent);
-    return result.funnel_id || null;
+    return {
+      action: result.action || "generic",
+      funnel_id: result.funnel_id || null
+    };
   } catch (e) {
     console.error("Error parseando respuesta JSON del Router:", rawContent);
-    return null;
+    return { action: "generic", funnel_id: null };
   }
 }
