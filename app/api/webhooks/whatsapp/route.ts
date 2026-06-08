@@ -91,9 +91,11 @@ export async function POST(req: Request) {
 
     const { fromMe } = body.payload;
 
-    // Ignorar mensajes enviados por el propio bot
+    // Ignorar mensajes enviados por el propio bot para no hacer loops de IA
+    // PERO los guardamos en el historial para que el CRM esté sincronizado
     if (fromMe) {
-      return NextResponse.json({ success: true });
+      processOutboundBackground(body).catch(err => console.error("Error en bg outbound:", err));
+      return NextResponse.json({ success: true, message: "Sincronizando outbound" });
     }
 
     // 🔥 EJECUCIÓN EN SEGUNDO PLANO 🔥
