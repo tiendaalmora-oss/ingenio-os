@@ -24,12 +24,13 @@ async function sendWahaMessage(chatId: string, text: string) {
       })
     });
     
+    const rawText = await res.text();
+    
     if (!res.ok) {
-      const errText = await res.text();
-      console.error("Error al enviar mensaje por WAHA:", errText);
-      return { success: false, error: `HTTP ${res.status}: ${errText}` };
+      console.error("Error al enviar mensaje por WAHA:", rawText);
+      return { success: false, error: `HTTP ${res.status}: ${rawText}`, debugUrl: wahaUrlBase };
     }
-    return { success: true };
+    return { success: true, debug: rawText, debugUrl: wahaUrlBase };
   } catch (error: any) {
     console.error("Excepción enviando por WAHA:", error);
     return { success: false, error: error.message };
