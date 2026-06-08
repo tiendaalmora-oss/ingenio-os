@@ -262,7 +262,7 @@ async function processMessageBackground(body: any) {
     if (!contact.current_step_id && contact.status !== 'humano') {
       
       const { data: activeFunnels } = await supabase.from("funnels").select("*").eq("activo", true);
-      let routerResult = { action: "generic", funnel_id: null };
+      let routerResult: { action: string, funnel_id: string | null } = { action: "generic", funnel_id: null };
 
       if (activeFunnels && activeFunnels.length > 0) {
         try {
