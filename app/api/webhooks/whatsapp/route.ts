@@ -196,12 +196,14 @@ async function processMessageBackground(body: any) {
     // ==============================================================
     // 1. Encontrar o Crear Contacto
     // ==============================================================
-    let { data: contact } = await supabase
+    let { data: contacts } = await supabase
       .from("crm_contacts")
       .select("*, funnels(*)")
       .eq("phone", phone)
-      .single();
+      .order("created_at", { ascending: true }) // MUY IMPORTANTE: Elegir el más viejo para evitar conflictos de duplicados por race conditions
+      .limit(1);
 
+    let contact = contacts && contacts.length > 0 ? contacts[0] : null;
     let isNewContact = false;
 
     if (!contact) {
