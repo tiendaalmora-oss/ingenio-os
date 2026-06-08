@@ -32,7 +32,7 @@ ${recentHistory}`;
   try {
     // Usamos el Orquestador para enviar la tarea al LLM
     const response = await invokeCognitiveEngine({
-      taskType: 'GENERATE_CONTENT',
+      taskType: 'COPYWRITING',
       systemPrompt: systemPrompt,
       userPrompt: `Mensaje actual del cliente: ${userMessage}`,
       format: 'text',
