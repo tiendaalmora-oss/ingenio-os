@@ -3,6 +3,19 @@ import { supabase } from "@/lib/db/supabase";
 
 export const dynamic = 'force-dynamic';
 
+const WAHA_URL = process.env.WAHA_URL || "http://localhost:3000";
+const WAHA_SESSION = process.env.WAHA_SESSION || "default";
+const WAHA_API_KEY = process.env.WAHA_API_KEY || "";
+
+function interpolateTemplate(text: string, contact: any): string {
+  return text
+    .replace(/\{nombre\}/gi, contact.name || "")
+    .replace(/\{name\}/gi, contact.name || "")
+    .replace(/\{telefono\}/gi, contact.phone || "")
+    .replace(/\{phone\}/gi, contact.phone || "");
+}
+
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -50,14 +63,20 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { current_step_id, notas, name, is_test, status } = body;
 
     // Obtener el estado actual para ver qué cambió
-    const { data: oldContact } = await supabase.from("crm_contacts").select("current_step_id, notas, name, status").eq("id", id).single();
+    const { data: oldContact } = await supabase.from("crm_contacts").select("current_step_id, notas, name, status, phone").eq("id", id).single();
 
     const updateFields: any = { updated_at: new Date().toISOString() };
     if (current_step_id !== undefined) updateFields.current_step_id = current_step_id;
     if (notas !== undefined) updateFields.notas = notas;
     if (name !== undefined) updateFields.name = name;
     if (is_test !== undefined) updateFields.is_test = is_test;
-    if (status !== undefined) updateFields.status = status;
+    
+    // Si cambia de etapa, forzamos reactivar el bot
+    if (current_step_id !== undefined && oldContact?.current_step_id !== current_step_id) {
+      updateFields.status = 'bot';
+    } else if (status !== undefined) {
+      updateFields.status = status;
+    }
 
     const { data, error } = await supabase
       .from("crm_contacts")
@@ -73,8 +92,46 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       await supabase.from("contact_events").insert([{
         contact_id: id,
         tipo: "etapa_cambiada",
-        descripcion: "Contacto movido a nueva etapa"
+        descripcion: "Contacto inyectado manualmente a nueva etapa del embudo"
       }]);
+
+      // ✅ INYECCIÓN DE EMBUDO MANUAL:
+      // Buscar la plantilla de esta nueva etapa y enviarla automáticamente
+      const { data: template } = await supabase.from("bot_templates").select("*").eq("step_id", current_step_id).limit(1).single();
+      if (template && template.mensaje && oldContact.phone) {
+        const msg = interpolateTemplate(template.mensaje, oldContact);
+        const finalChatId = oldContact.phone.includes("@") ? oldContact.phone : `${oldContact.phone}@c.us`;
+        const wahaUrlBase = WAHA_URL.replace(/\/+$/, '');
+        
+        try {
+          const res = await fetch(`${wahaUrlBase}/api/sendText`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              ...(WAHA_API_KEY ? { "X-Api-Key": WAHA_API_KEY } : {})
+            },
+            body: JSON.stringify({
+              chatId: finalChatId,
+              text: msg,
+              session: WAHA_SESSION
+            })
+          });
+
+          const success = res.ok;
+          const errorMsg = success ? null : await res.text();
+
+          await supabase.from("crm_conversations").insert([{
+            contact_id: id,
+            direction: "outbound",
+            type: "text",
+            content: success ? msg : `[ERROR INYECCIÓN WAHA] Falló el envío: ${errorMsg}`,
+            metadata: { template_id: template.id, manual_injection: true }
+          }]);
+        } catch (sendErr: any) {
+          console.error("Excepción enviando plantilla inyectada:", sendErr);
+        }
+      }
     }
     
     if (oldContact && notas !== undefined && oldContact.notas !== notas) {

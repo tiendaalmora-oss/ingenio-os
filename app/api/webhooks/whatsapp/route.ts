@@ -513,3 +513,67 @@ async function processMessageBackground(body: any) {
     console.error("Error crítico en proceso de fondo webhook:", err);
   }
 }
+
+/**
+ * Procesa mensajes salientes (fromMe) para sincronizarlos en el CRM 
+ * si fueron enviados desde el teléfono físico y no desde el CRM/Bot.
+ */
+async function processOutboundBackground(body: any) {
+  try {
+    const { to, body: content, type } = body.payload;
+    const phone = to.split("@")[0];
+
+    // Buscar si existe el contacto
+    const { data: contact } = await supabase
+      .from("crm_contacts")
+      .select("id")
+      .eq("phone", phone)
+      .single();
+
+    if (!contact) return; // Si no existe el contacto, no lo registramos (evita llenar la DB con contactos personales)
+
+    // Evitar duplicados: Si el CRM o el Bot acaban de mandar este mismo mensaje en los últimos 15 segundos, lo ignoramos.
+    const { data: recentMsg } = await supabase
+      .from("crm_conversations")
+      .select("id")
+      .eq("contact_id", contact.id)
+      .eq("direction", "outbound")
+      .eq("content", content || "")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    // Comprobar si el mensaje reciente es muy nuevo (menos de 15 segundos)
+    if (recentMsg) {
+       // Lamentablemente no tenemos timestamp en el select, vamos a buscar con un filtro de tiempo
+       const { data: veryRecentMsg } = await supabase
+         .from("crm_conversations")
+         .select("id")
+         .eq("contact_id", contact.id)
+         .eq("direction", "outbound")
+         .eq("content", content || "")
+         .gte("created_at", new Date(Date.now() - 15000).toISOString())
+         .limit(1);
+         
+       if (veryRecentMsg && veryRecentMsg.length > 0) {
+         console.log("Mensaje outbound duplicado detectado (fue enviado por CRM/Bot). Ignorando.");
+         return;
+       }
+    }
+
+    // Es un mensaje genuino desde el teléfono físico.
+    // Insertar en la conversación.
+    await supabase.from("crm_conversations").insert([{
+      contact_id: contact.id,
+      direction: "outbound",
+      type: type || "text",
+      content: content || `[${(type || "multimedia").toUpperCase()}]`,
+      metadata: { source: "physical_phone", payload: body.payload }
+    }]);
+
+    console.log(`Sincronizado mensaje enviado desde el teléfono a ${phone}`);
+
+  } catch (error) {
+    console.error("Error sincronizando outbound:", error);
+  }
+}
