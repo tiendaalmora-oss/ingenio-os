@@ -86,6 +86,12 @@ export async function POST(req: Request) {
 
     if (insertError) throw insertError;
 
+    // Actualizar el contacto con la fecha del último mensaje
+    await supabase.from("crm_contacts").update({
+      ultimo_contacto: new Date().toISOString(),
+      ultimo_mensaje: `[Tú] ${message}`
+    }).eq("id", contact_id);
+
     // Si el contacto estaba en modo "bot", quizás queramos pasarlo a "humano" automáticamente
     // ya que un humano acaba de intervenir.
     if (contact.status !== 'humano' && sendResult.success) {

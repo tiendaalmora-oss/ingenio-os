@@ -571,6 +571,12 @@ async function processOutboundBackground(body: any) {
       metadata: { source: "physical_phone", payload: body.payload }
     }]);
 
+    // Actualizar el contacto con la fecha del último mensaje
+    await supabase.from("crm_contacts").update({
+      ultimo_contacto: new Date().toISOString(),
+      ultimo_mensaje: `[Teléfono Físico] ${content ? content.substring(0, 30) : type}`
+    }).eq("id", contact.id);
+
     console.log(`Sincronizado mensaje enviado desde el teléfono a ${phone}`);
 
   } catch (error) {

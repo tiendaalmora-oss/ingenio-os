@@ -19,7 +19,7 @@ export async function GET(req: Request) {
         funnels (nombre),
         funnel_steps!current_step_id (nombre, key, color)
       `)
-      .order("updated_at", { ascending: false });
+      .order("ultimo_contacto", { ascending: false, nullsFirst: false });
 
     if (tag && tag !== "all") {
       query = query.contains("tags", [tag]);
