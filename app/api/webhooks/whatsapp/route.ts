@@ -378,7 +378,7 @@ async function processMessageBackground(body: any) {
     } else if (contact.current_step_id && contact.status !== 'humano') {
       const { data: currentStep } = await supabase
         .from("funnel_steps")
-        .select("*")
+        .select("*, funnels(*)")
         .eq("id", contact.current_step_id)
         .single();
 

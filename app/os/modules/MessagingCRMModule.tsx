@@ -852,6 +852,19 @@ function FunnelsView({ funnels, onRefresh }: { funnels: any[], onRefresh: () => 
     }
   };
 
+  const updateFunnel = async (id: string, updates: any) => {
+    try {
+      await fetch(`/api/crm/funnels/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates)
+      });
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="h-full overflow-y-auto p-4 max-w-4xl mx-auto space-y-8">
       {funnels.map(funnel => (
@@ -898,6 +911,43 @@ function FunnelsView({ funnels, onRefresh }: { funnels: any[], onRefresh: () => 
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+              <span className="text-lg">🧠</span> Cerebro del Bot Experto (RAG)
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-zinc-400">Prompt de Personalidad (System Prompt)</label>
+                <textarea 
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-300 font-mono resize-y min-h-[120px] focus:outline-none focus:border-zinc-600"
+                  placeholder="Ej: Sos un vendedor empático. Usá viñetas y emojis. Respondé corto y claro."
+                  defaultValue={funnel.bot_prompt || ""}
+                  onBlur={(e) => {
+                    if (e.target.value !== (funnel.bot_prompt || "")) {
+                      updateFunnel(funnel.id, { bot_prompt: e.target.value });
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-zinc-400">Base de Conocimiento (Knowledge Base)</label>
+                <textarea 
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm text-zinc-300 font-mono resize-y min-h-[120px] focus:outline-none focus:border-zinc-600"
+                  placeholder="Pegá aquí todas las especificaciones técnicas, compatibilidades, precios y reglas de venta del producto..."
+                  defaultValue={funnel.knowledge_base || ""}
+                  onBlur={(e) => {
+                    if (e.target.value !== (funnel.knowledge_base || "")) {
+                      updateFunnel(funnel.id, { knowledge_base: e.target.value });
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="text-xs text-green-500 font-medium bg-green-500/10 px-3 py-2 rounded-lg border border-green-500/20 inline-block">
+              Se guarda automáticamente al quitar el cursor del cuadro.
+            </div>
           </div>
           
           <div className="mt-6 pt-4 border-t border-zinc-800 text-center">

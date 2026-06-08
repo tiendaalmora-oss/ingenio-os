@@ -5,7 +5,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const body = await req.json();
-    const { nombre, producto, descripcion, activo, color } = body;
+    const { nombre, producto, descripcion, activo, color, knowledge_base, bot_prompt } = body;
 
     const updateFields: any = {};
     if (nombre !== undefined) updateFields.nombre = nombre;
@@ -13,6 +13,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (descripcion !== undefined) updateFields.descripcion = descripcion;
     if (activo !== undefined) updateFields.activo = activo;
     if (color !== undefined) updateFields.color = color;
+    if (knowledge_base !== undefined) updateFields.knowledge_base = knowledge_base;
+    if (bot_prompt !== undefined) updateFields.bot_prompt = bot_prompt;
 
     const { data, error } = await supabase
       .from("funnels")
