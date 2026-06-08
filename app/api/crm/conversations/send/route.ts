@@ -57,8 +57,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Contacto no encontrado" }, { status: 404 });
     }
 
-    // Enviar el mensaje por WAHA
-    const sendResult = await sendWahaMessage(contact.phone, message);
+    // Encontrar el ID exacto de chat (para manejar @lid o @g.us)
+    const { data: lastInbound } = await supabase
+      .from("crm_conversations")
+      .select("metadata")
+      .eq("contact_id", contact_id)
+      .eq("direction", "inbound")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    let exactChatId = contact.phone;
+    if (lastInbound && lastInbound.metadata && lastInbound.metadata.from) {
+      exactChatId = lastInbound.metadata.from;
+    }
+
+    // Enviar el mensaje por WAHA usando el ID exacto
+    const sendResult = await sendWahaMessage(exactChatId, message);
 
     // Registrar el mensaje en la base de datos
     const { data: convData, error: insertError } = await supabase.from("crm_conversations").insert([{
