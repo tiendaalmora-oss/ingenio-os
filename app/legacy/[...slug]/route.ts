@@ -23,6 +23,34 @@ export async function GET(
           headers: { "Content-Type": "text/html" },
         });
       }
+      
+      // Si el archivo físico no existe, intentamos buscarlo en Supabase (por si el servidor se reinició)
+      // resolvedParams.slug es ["cita", "landing"] o similar
+      if (resolvedParams.slug.length >= 2 && resolvedParams.slug[1] === "landing") {
+        const projectSlug = resolvedParams.slug[0];
+        const { supabase } = await import("@/lib/db/supabase");
+        const { data: variant } = await supabase
+          .from("landing_variants")
+          .select("published_html")
+          .eq("product_slug", projectSlug)
+          .eq("status", "PUBLISHED")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (variant && variant.published_html) {
+          // Re-crear el archivo para futuros requests
+          try {
+            if (!fs.existsSync(filePath)) fs.mkdirSync(filePath, { recursive: true });
+            fs.writeFileSync(indexPath, variant.published_html, "utf8");
+          } catch(e) {}
+          
+          return new NextResponse(variant.published_html, {
+            headers: { "Content-Type": "text/html" },
+          });
+        }
+      }
+
       return new NextResponse("Directory index not found", { status: 404 });
     }
 
