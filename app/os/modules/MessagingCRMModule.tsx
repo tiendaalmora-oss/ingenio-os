@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { StepEditorModal } from "./StepEditorModal";
 
 type Tab = "funnels" | "contacts" | "templates" | "conversion";
 
@@ -832,6 +833,21 @@ function TemplatesView({ activeFunnelId, funnels, onRefresh }: { activeFunnelId:
 ========================================= */
 function FunnelsView({ funnels, onRefresh }: { funnels: any[], onRefresh: () => void }) {
   const [isCloning, setIsCloning] = useState(false);
+  const [editingStep, setEditingStep] = useState<any>(null);
+  const [isDeletingStep, setIsDeletingStep] = useState(false);
+
+  const deleteStep = async (id: string, name: string) => {
+    if (!window.confirm(`¿Seguro que querés eliminar la etapa "${name}"?\n\nLos contactos que estén en esta etapa quedarán sin etapa asignada.`)) return;
+    setIsDeletingStep(true);
+    try {
+      const res = await fetch(`/api/crm/steps/${id}`, { method: "DELETE" });
+      if (res.ok) onRefresh();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsDeletingStep(false);
+    }
+  };
 
   const cloneFunnel = async (id: string, name: string) => {
     if (!name.trim()) return;
@@ -906,8 +922,23 @@ function FunnelsView({ funnels, onRefresh }: { funnels: any[], onRefresh: () => 
                   <div className="font-bold text-white text-sm">{step.nombre}</div>
                   <div className="text-xs text-zinc-500">{step.descripcion}</div>
                 </div>
-                <div className="text-xs bg-zinc-800 text-zinc-400 px-2 py-1 rounded font-mono">
-                  {step.key}
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setEditingStep(step)}
+                    className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded text-xs"
+                  >
+                    ✏️ Editar Seguimientos
+                  </button>
+                  <button 
+                    onClick={() => deleteStep(step.id, step.nombre)}
+                    disabled={isDeletingStep}
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-500 px-2 py-1 rounded text-xs disabled:opacity-50"
+                  >
+                    🗑️
+                  </button>
+                  <div className="text-xs bg-zinc-800 text-zinc-400 px-2 py-1 rounded font-mono ml-2">
+                    {step.key}
+                  </div>
                 </div>
               </div>
             ))}
@@ -955,6 +986,14 @@ function FunnelsView({ funnels, onRefresh }: { funnels: any[], onRefresh: () => 
           </div>
         </div>
       ))}
+
+      {editingStep && (
+        <StepEditorModal 
+          step={editingStep} 
+          onClose={() => setEditingStep(null)} 
+          onRefresh={onRefresh} 
+        />
+      )}
     </div>
   );
 }

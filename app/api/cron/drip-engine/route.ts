@@ -42,12 +42,11 @@ export async function GET(req: Request) {
   try {
     console.log("[DRIP ENGINE] Iniciando ejecución...");
 
-    // 1. Obtener todas las etapas que tienen configurado un delay de seguimiento
+    // 1. Obtener todas las etapas
+    // Buscamos las que tengan drips_config (nuevo sistema) o followup_delay_minutes (sistema viejo)
     const { data: stepsWithDrip, error: stepsError } = await supabase
       .from("funnel_steps")
-      .select("id, nombre, followup_delay_minutes, followup_template, followup_condition")
-      .not("followup_delay_minutes", "is", null)
-      .not("followup_template", "is", null);
+      .select("id, nombre, drips_config, followup_delay_minutes, followup_template, followup_condition");
 
     if (stepsError) throw stepsError;
 
@@ -57,41 +56,60 @@ export async function GET(req: Request) {
 
     const report = [];
 
-    // 2. Iterar sobre cada etapa para buscar contactos elegibles
+    // 2. Iterar sobre cada etapa
     for (const step of stepsWithDrip) {
-      const delayMinutes = step.followup_delay_minutes;
       
-      // Calcular la fecha/hora límite. Si el contacto fue actualizado antes de esto, ya pasó el delay.
-      const cutoffTime = new Date(Date.now() - delayMinutes * 60 * 1000).toISOString();
+      // Normalizamos la lista de seguimientos
+      let drips: any[] = [];
+      
+      if (step.drips_config && Array.isArray(step.drips_config) && step.drips_config.length > 0) {
+        drips = step.drips_config;
+      } else if (step.followup_delay_minutes && step.followup_template) {
+        // Fallback al sistema viejo si aún no migraron la BD
+        drips = [{
+          delay_minutes: step.followup_delay_minutes,
+          template: step.followup_template,
+          condition: step.followup_condition || 'no_reply'
+        }];
+      }
 
-      // Buscar contactos que:
-      // a) Están en esta etapa (current_step_id = step.id)
-      // b) No han recibido seguimiento para esta etapa (last_followup_step_id != step.id OR last_followup_step_id is null)
-      // c) El tiempo de su último contacto (ultimo_contacto) es anterior al cutoffTime.
-      // d) Su status sea 'bot' (si es 'humano' no interrumpimos).
+      if (drips.length === 0) continue; // Esta etapa no tiene seguimientos
+
+      // Buscar contactos en esta etapa que estén activos
       const { data: eligibleContacts, error: contactsError } = await supabase
         .from("crm_contacts")
-        .select("id, phone, name, ultimo_contacto, last_followup_step_id")
+        .select("id, phone, name, ultimo_contacto, last_followup_index")
         .eq("current_step_id", step.id)
-        .eq("status", "activo")
-        .lt("ultimo_contacto", cutoffTime);
+        .eq("status", "activo");
         
       if (contactsError) {
         console.error(`[DRIP ENGINE] Error buscando contactos para etapa ${step.id}:`, contactsError);
         continue;
       }
 
-      // Filtrar a mano los que ya recibieron el followup de esta etapa
-      const pendingContacts = eligibleContacts?.filter(c => c.last_followup_step_id !== step.id) || [];
+      for (const contact of (eligibleContacts || [])) {
+        // Validar que el cliente no haya terminado todos los seguimientos
+        const currentIndex = contact.last_followup_index || 0;
+        
+        if (currentIndex >= drips.length) {
+          continue; // Ya recibió todos los drips de esta etapa
+        }
 
-      for (const contact of pendingContacts) {
-        // Chequear condición 'no_reply'.
-        // Si es 'no_reply', debemos verificar si el último mensaje lo envió el contacto (inbound) o el bot (outbound).
-        // Si el cliente respondió DESPUÉS del mensaje del bot que lo puso en esta etapa, la respuesta actualizaría el updated_at y, 
-        // más importante, si respondió, quizá la IA lo movió de etapa. Pero asumiendo que sigue en la etapa,
-        // podríamos verificar quién mandó el último mensaje.
+        const currentDrip = drips[currentIndex];
+        const delayMinutes = currentDrip.delay_minutes || 0;
+        
+        // Calcular la fecha/hora límite
+        const cutoffTime = new Date(Date.now() - delayMinutes * 60 * 1000).getTime();
+        const contactTime = new Date(contact.ultimo_contacto).getTime();
+
+        // Si aún no pasó el tiempo necesario desde el último contacto, lo salteamos
+        if (contactTime > cutoffTime) {
+          continue; 
+        }
+
         let shouldSend = true;
-        if (step.followup_condition === "no_reply") {
+        
+        if (currentDrip.condition === "no_reply") {
           const { data: lastMsg } = await supabase
             .from("crm_conversations")
             .select("direction")
@@ -100,17 +118,15 @@ export async function GET(req: Request) {
             .limit(1)
             .single();
             
-          // Si el último mensaje es inbound, significa que el cliente SÍ respondió (y por algún motivo sigue en la misma etapa)
+          // Si el último mensaje fue del cliente, no enviamos el seguimiento (porque no cumple "sin respuesta")
           if (lastMsg && lastMsg.direction === "inbound") {
             shouldSend = false;
           }
         }
 
         if (shouldSend) {
-          // Reemplazar variables (por ahora solo nombre)
-          const msgText = step.followup_template.replace(/\{nombre\}/gi, contact.name || "");
+          const msgText = currentDrip.template.replace(/\{nombre\}/gi, contact.name || "");
           
-          // Buscar el ID real de WhatsApp (con @c.us o @lid) desde el último mensaje entrante
           let realChatId = contact.phone;
           const { data: lastInbound } = await supabase
             .from("crm_conversations")
@@ -125,36 +141,35 @@ export async function GET(req: Request) {
             realChatId = lastInbound.metadata.from;
           }
 
-          console.log(`[DRIP ENGINE] Enviando seguimiento a ${realChatId} (Etapa: ${step.nombre})`);
+          console.log(`[DRIP ENGINE] Enviando seguimiento #${currentIndex + 1} a ${realChatId} (Etapa: ${step.nombre})`);
           
           const sendResult = await sendWahaMessage(realChatId, msgText);
           
           if (sendResult.success) {
-            // Guardar en conversacion
             await supabase.from("crm_conversations").insert([{
               contact_id: contact.id,
               direction: "outbound",
               type: "text",
               content: msgText,
-              metadata: { source: "drip_engine", step_id: step.id }
+              metadata: { source: "drip_engine", step_id: step.id, drip_index: currentIndex }
             }]);
 
-            // Actualizar contacto
+            // Avanzamos el índice para que el próximo Drip sea el siguiente en la lista
             await supabase.from("crm_contacts").update({
-              last_followup_step_id: step.id
+              last_followup_index: currentIndex + 1
             }).eq("id", contact.id);
 
-            report.push(`Mensaje enviado a ${contact.phone} (Etapa: ${step.nombre})`);
+            report.push(`Mensaje #${currentIndex + 1} enviado a ${contact.phone} (Etapa: ${step.nombre})`);
           } else {
             console.error(`[DRIP ENGINE] Falló envío a ${contact.phone}`);
           }
         } else {
-            // Si no se envía por la condición no_reply, igual marcamos para no re-evaluarlo constantemente?
-            // Podríamos marcarlo para evitar que el cron lo intente eternamente.
+            // Si la condición "no_reply" no se cumple, cancelamos el resto de los seguimientos de esta etapa
+            // avanzando el índice hasta el final.
             await supabase.from("crm_contacts").update({
-              last_followup_step_id: step.id
+              last_followup_index: drips.length
             }).eq("id", contact.id);
-            report.push(`Seguimiento omitido para ${contact.phone} (Condición no_reply no cumplida)`);
+            report.push(`Seguimiento omitido para ${contact.phone} (Respondió antes)`);
         }
       }
     }
