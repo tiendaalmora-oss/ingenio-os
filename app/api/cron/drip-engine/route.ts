@@ -71,9 +71,12 @@ export async function GET(req: Request) {
     }
 
     const report = [];
+    let messagesSentThisRun = 0; // Anti-spam: Límite por ejecución
 
     // 2. Iterar sobre cada etapa
     for (const step of stepsWithDrip) {
+      if (messagesSentThisRun >= 3) break; // Límite de seguridad
+
       
       // Normalizamos la lista de seguimientos
       let drips: any[] = [];
@@ -159,6 +162,9 @@ export async function GET(req: Request) {
 
           console.log(`[DRIP ENGINE] Enviando seguimiento #${currentIndex + 1} a ${realChatId} (Etapa: ${step.nombre})`);
           
+          // Retraso artificial para no gatillar los filtros antispam de WhatsApp
+          await new Promise(r => setTimeout(r, Math.random() * 4000 + 4000)); // 4 a 8 segundos
+          
           const sendResult = await sendWahaMessage(realChatId, msgText);
           
           if (sendResult.success) {
@@ -170,20 +176,25 @@ export async function GET(req: Request) {
               metadata: { source: "drip_engine", step_id: step.id, drip_index: currentIndex }
             }]);
 
-            // Avanzamos el índice para que el próximo Drip sea el siguiente en la lista
+            // Avanzamos el índice y ACTUALIZAMOS ultimo_contacto para que el próximo delay
+            // empiece a contar desde el momento en que enviamos ESTE mensaje.
             await supabase.from("crm_contacts").update({
-              last_followup_index: currentIndex + 1
+              last_followup_index: currentIndex + 1,
+              ultimo_contacto: new Date().toISOString()
             }).eq("id", contact.id);
 
             report.push(`Mensaje #${currentIndex + 1} enviado a ${contact.phone} (Etapa: ${step.nombre})`);
+            messagesSentThisRun++;
+            if (messagesSentThisRun >= 3) break; // Cortar si llegamos al límite
           } else {
             console.error(`[DRIP ENGINE] Falló envío a ${contact.phone}`);
           }
         } else {
             // Si la condición "no_reply" no se cumple, cancelamos el resto de los seguimientos de esta etapa
-            // avanzando el índice hasta el final.
+            // avanzando el índice hasta el final y reseteando ultimo_contacto.
             await supabase.from("crm_contacts").update({
-              last_followup_index: drips.length
+              last_followup_index: drips.length,
+              ultimo_contacto: new Date().toISOString()
             }).eq("id", contact.id);
             report.push(`Seguimiento omitido para ${contact.phone} (Respondió antes)`);
         }
