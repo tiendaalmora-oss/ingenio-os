@@ -42,6 +42,22 @@ export async function GET(req: Request) {
   try {
     console.log("[DRIP ENGINE] Iniciando ejecución...");
 
+    // ==============================================================
+    // REGLA DE HORARIO COMERCIAL (ARGENTINA UTC-3)
+    // ==============================================================
+    const argentinaTime = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }));
+    const currentHour = argentinaTime.getHours();
+    
+    // Si NO estamos entre las 09:00 y las 20:59, pausamos el motor.
+    // Los mensajes no se pierden, simplemente esperarán al día siguiente a las 09:00 para enviarse.
+    if (currentHour < 9 || currentHour >= 21) {
+      console.log(`[DRIP ENGINE] Pausado. Fuera de horario comercial (${currentHour}hs).`);
+      return NextResponse.json({ 
+        success: true, 
+        message: `Fuera de horario comercial (${currentHour}hs). Los envíos se reanudarán a las 09:00.` 
+      });
+    }
+
     // 1. Obtener todas las etapas
     // Buscamos las que tengan drips_config (nuevo sistema) o followup_delay_minutes (sistema viejo)
     const { data: stepsWithDrip, error: stepsError } = await supabase
