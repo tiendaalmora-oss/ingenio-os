@@ -129,16 +129,17 @@ export async function GET(req: Request) {
         let shouldSend = true;
         
         if (currentDrip.condition === "no_reply") {
-          const { data: lastMsg } = await supabase
+          // Buscamos si hubo ALGUN mensaje del cliente desde el ultimo contacto/drip
+          const { data: recentInbounds } = await supabase
             .from("crm_conversations")
-            .select("direction")
+            .select("id")
             .eq("contact_id", contact.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
+            .eq("direction", "inbound")
+            .gt("created_at", contact.ultimo_contacto)
+            .limit(1);
             
-          // Si el último mensaje fue del cliente, no enviamos el seguimiento (porque no cumple "sin respuesta")
-          if (lastMsg && lastMsg.direction === "inbound") {
+          // Si el cliente mandó aunque sea un mensaje desde que empezó a correr el reloj, cancelamos el drip
+          if (recentInbounds && recentInbounds.length > 0) {
             shouldSend = false;
           }
         }
