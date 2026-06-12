@@ -57,6 +57,8 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+COPY --from=builder --chown=nextjs:nodejs /app/cron-runner.js ./
+
 USER nextjs
 
 EXPOSE 3000
@@ -65,4 +67,5 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # server.js is created by next build from the standalone output
-CMD ["node", "server.js"]
+# We use sh -c to run the internal cron runner in the background, and the server in the foreground
+CMD ["sh", "-c", "node cron-runner.js & node server.js"]
