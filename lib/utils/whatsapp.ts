@@ -80,7 +80,7 @@ export async function transcribeAudio(buffer: Buffer): Promise<string | null> {
   }
 
   try {
-    const blob = new Blob([buffer], { type: "audio/ogg" });
+    const blob = new Blob([buffer as any], { type: "audio/ogg" });
     const formData = new FormData();
     formData.append("file", blob, "audio.ogg");
     formData.append("model", "whisper-large-v3-turbo");
