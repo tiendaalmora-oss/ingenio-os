@@ -209,8 +209,17 @@ async function processOutboundBackground(body: any) {
     const { to, body: content, type } = body.payload;
     const phone = to.split("@")[0];
 
-    const { data: contact } = await supabase.from("crm_contacts").select("id").eq("phone", phone).single();
-    if (!contact) return; 
+    let { data: contact } = await supabase.from("crm_contacts").select("id").eq("phone", phone).single();
+    
+    // Si es una campaña a contactos fríos que no están en el CRM, los creamos silenciosamente
+    if (!contact) {
+      const { data: newContact } = await supabase.from("crm_contacts").insert([{
+        phone, name: "Campaña Masiva", source: "whatsapp", is_test: false,
+        ultimo_mensaje: `[Enviado Físico]`, ultimo_contacto: new Date().toISOString()
+      }]).select("id").single();
+      contact = newContact;
+      if (!contact) return; // Failsafe
+    }
 
     const { data: veryRecentMsg } = await supabase
       .from("crm_conversations")
