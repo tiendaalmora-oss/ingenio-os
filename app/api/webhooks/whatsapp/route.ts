@@ -125,7 +125,7 @@ async function processMessageImmediate(body: any) {
     // 4. Delegar a la IA (Agrupación / Debouncing de 20s)
     // ==============================================================
     if (contact.status !== "humano") {
-      scheduleAIProcessing(contact.id, phone, from, 45000);
+      scheduleAIProcessing(contact.id, phone, from, 15000);
     }
 
   } catch (err: any) {
