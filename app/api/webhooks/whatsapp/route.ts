@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/supabase";
-import { sendWahaMessage } from "@/lib/utils/whatsapp";
+import { sendWahaMessage, downloadWahaMedia, transcribeAudio } from "@/lib/utils/whatsapp";
 import { scheduleAIProcessing } from "@/lib/utils/debouncer";
 
 const MULTIMEDIA_TYPES = ["audio", "ptt", "image", "video", "document", "sticker", "gif"];
@@ -43,6 +43,7 @@ async function processMessageImmediate(body: any) {
     // 1. Manejo de Multimedia (Inmediato)
     // ==============================================================
     const isMultimedia = MULTIMEDIA_TYPES.includes(type);
+    
     if (isMultimedia) {
       let { data: contactCheck } = await supabase.from("crm_contacts").select("id, name").eq("phone", phone).single();
 
@@ -54,30 +55,73 @@ async function processMessageImmediate(body: any) {
         contactCheck = newC;
       }
 
-      if (contactCheck) {
+      if (type === "audio" || type === "ptt") {
+        // Log original inbound
+        await supabase.from("crm_conversations").insert([{
+          contact_id: contactCheck.id, direction: "inbound", type: type,
+          content: `[Audio recibido, procesando transcripción...]`, metadata: { type }
+        }]);
+
+        const msgId = body.payload.id?._serialized || body.payload.id;
+        const buffer = await downloadWahaMedia(msgId);
+        
+        let transcriptSuccess = false;
+        if (buffer) {
+          const transcript = await transcribeAudio(buffer);
+          if (transcript && transcript.trim() !== "") {
+            transcriptSuccess = true;
+            // Overwrite content for the debouncer
+            content = `[Audio transcrito]: "${transcript}"`;
+            body.payload.body = content;
+            body.payload.type = "chat"; // Trick the rest of the flow
+            
+            // Save the transcription as an inbound message
+            await supabase.from("crm_conversations").insert([{
+              contact_id: contactCheck.id, direction: "inbound", type: "text",
+              content: content, metadata: { original_type: type, transcript_success: true }
+            }]);
+          }
+        }
+
+        if (!transcriptSuccess) {
+          // Fallback if transcription failed
+          let multimediaMsg = `Hola${pushName ? " " + pushName : ""} 👋 Recibimos tu audio pero tuvimos un problema al transcribirlo. En cuanto un asesor esté disponible lo va a escuchar y te responderá por este medio. 🙏`;
+          await sendWahaMessage(from, multimediaMsg);
+          await supabase.from("crm_conversations").insert([{
+            contact_id: contactCheck.id, direction: "outbound", type: "text",
+            content: multimediaMsg, metadata: { multimedia_fallback: true, original_type: type }
+          }]);
+          await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contactCheck.id);
+          return;
+        }
+        
+        // If success, we DO NOT return, we let the code continue down to debouncer!
+        
+      } else {
+        // Other multimedia (image, video, document, etc.) triggers fallback
         await supabase.from("crm_conversations").insert([{
           contact_id: contactCheck.id, direction: "inbound", type: type,
           content: `[Mensaje de ${type.toUpperCase()} recibido]`, metadata: { type }
         }]);
+
+        let multimediaMsg = `Hola${pushName ? " " + pushName : ""} 👋 Recibimos tu ${type === 'image' ? 'imagen' : type === 'video' ? 'video' : 'archivo'}. En cuanto un asesor esté disponible lo va a revisar y te responderá por este medio. 🙏`;
+        
+        await sendWahaMessage(from, multimediaMsg);
+
+        if (contactCheck) {
+          await supabase.from("crm_conversations").insert([{
+            contact_id: contactCheck.id, direction: "outbound", type: "text",
+            content: multimediaMsg, metadata: { multimedia_fallback: true, original_type: type }
+          }]);
+
+          await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contactCheck.id);
+          await supabase.from("contact_events").insert([{
+            contact_id: contactCheck.id, tipo: "escalado_humano", descripcion: `Cliente envió multimedia (${type}).`
+          }]);
+        }
+
+        return;
       }
-
-      let multimediaMsg = `Hola${pushName ? " " + pushName : ""} 👋 Recibimos tu ${type === 'audio' || type === 'ptt' ? 'audio' : type === 'image' ? 'imagen' : type === 'video' ? 'video' : 'archivo'}. En cuanto un asesor esté disponible lo va a revisar y te responderá por este medio. 🙏`;
-      
-      await sendWahaMessage(from, multimediaMsg);
-
-      if (contactCheck) {
-        await supabase.from("crm_conversations").insert([{
-          contact_id: contactCheck.id, direction: "outbound", type: "text",
-          content: multimediaMsg, metadata: { multimedia_fallback: true, original_type: type }
-        }]);
-
-        await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contactCheck.id);
-        await supabase.from("contact_events").insert([{
-          contact_id: contactCheck.id, tipo: "escalado_humano", descripcion: `Cliente envió multimedia (${type}).`
-        }]);
-      }
-
-      return;
     }
 
     // Interceptar intenciones de llamada en mensajes de texto

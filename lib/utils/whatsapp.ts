@@ -50,6 +50,62 @@ export function hasAdvanceIntent(message: string): boolean {
   return ADVANCE_KEYWORDS.some(kw => lower.includes(kw));
 }
 
+export async function downloadWahaMedia(messageId: string): Promise<Buffer | null> {
+  try {
+    const wahaUrlBase = WAHA_URL.replace(/\/+$/, '');
+    const res = await fetch(`${wahaUrlBase}/api/${WAHA_SESSION}/messages/${encodeURIComponent(messageId)}/download`, {
+      method: "GET",
+      headers: {
+        "Accept": "*/*",
+        ...(WAHA_API_KEY ? { "X-Api-Key": WAHA_API_KEY } : {})
+      }
+    });
+    if (!res.ok) {
+      console.error("Error al descargar media de WAHA:", await res.text());
+      return null;
+    }
+    const buffer = await res.arrayBuffer();
+    return Buffer.from(buffer);
+  } catch (err) {
+    console.error("Excepción al descargar media de WAHA:", err);
+    return null;
+  }
+}
+
+export async function transcribeAudio(buffer: Buffer): Promise<string | null> {
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY) {
+    console.error("GROQ_API_KEY no configurada");
+    return null;
+  }
+
+  try {
+    const blob = new Blob([buffer], { type: "audio/ogg" });
+    const formData = new FormData();
+    formData.append("file", blob, "audio.ogg");
+    formData.append("model", "whisper-large-v3-turbo");
+
+    const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`
+      },
+      body: formData
+    });
+
+    if (!res.ok) {
+      console.error("Error Groq Whisper:", await res.text());
+      return null;
+    }
+
+    const data = await res.json();
+    return data.text;
+  } catch (err) {
+    console.error("Excepción en Groq Whisper:", err);
+    return null;
+  }
+}
+
 export function interpolateTemplate(text: string, contact: any): string {
   return text
     .replace(/\{nombre\}/gi, contact.name || "")
