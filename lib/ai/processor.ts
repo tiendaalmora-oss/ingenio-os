@@ -155,19 +155,35 @@ export async function executeAIForContact(contactId: string, phone: string, from
               .limit(1)
               .single();
 
-            if (nextStep) {
-              await supabase.from("crm_contacts").update({ current_step_id: nextStep.id }).eq("id", contact.id);
-              const { data: nextTemplate } = await supabase.from("bot_templates").select("*").eq("step_id", nextStep.id).order("created_at", { ascending: true }).limit(1).single();
-              if (nextTemplate && nextTemplate.mensaje) {
-                const msg = interpolateTemplate(nextTemplate.mensaje, contact);
-                const sendResult = await sendWahaMessage(from, msg);
-                await supabase.from("crm_conversations").insert([{
-                  contact_id: contact.id, direction: "outbound", type: "text",
-                  content: sendResult.success ? msg : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
-                  metadata: { template_id: nextTemplate.id, ai_action: "keyword_advance" }
-                }]);
-              }
-            } else {
+              if (nextStep) {
+                await supabase.from("crm_contacts").update({ current_step_id: nextStep.id }).eq("id", contact.id);
+                const { data: nextTemplate } = await supabase.from("bot_templates").select("*").eq("step_id", nextStep.id).order("created_at", { ascending: true }).limit(1).single();
+                
+                if (nextTemplate && nextTemplate.mensaje && nextTemplate.mensaje.trim() !== "") {
+                  const msg = interpolateTemplate(nextTemplate.mensaje, contact);
+                  const sendResult = await sendWahaMessage(from, msg);
+                  await supabase.from("crm_conversations").insert([{
+                    contact_id: contact.id, direction: "outbound", type: "text",
+                    content: sendResult.success ? msg : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+                    metadata: { template_id: nextTemplate.id, ai_action: "keyword_advance" }
+                  }]);
+                } else if (nextStep.ai_goal) {
+                  // Flujo 100% conversacional: Evaluamos la nueva etapa inmediatamente con el mismo mensaje del usuario
+                  try {
+                    const aiResultNew = await evaluateGatekeeper(chatHistory || [], nextStep, lastContent);
+                    if (aiResultNew.accion === "responder" && aiResultNew.respuesta_ia) {
+                      const sendResult = await sendWahaMessage(from, aiResultNew.respuesta_ia);
+                      await supabase.from("crm_conversations").insert([{
+                        contact_id: contact.id, direction: "outbound", type: "text",
+                        content: sendResult.success ? aiResultNew.respuesta_ia : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+                        metadata: { ai_action: "responder_avance_keyword", sendResult }
+                      }]);
+                    }
+                  } catch (err) {
+                    console.error("Error evaluando nueva etapa conversacional (keyword):", err);
+                  }
+                }
+              } else {
               const endMsg = "¡Genial! 🎉 Hemos registrado tu interés. Un asesor se va a poner en contacto contigo muy pronto para cerrar los detalles.";
               await sendWahaMessage(from, endMsg);
               await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contact.id);
@@ -195,7 +211,8 @@ export async function executeAIForContact(contactId: string, phone: string, from
               if (nextStep) {
                 await supabase.from("crm_contacts").update({ current_step_id: nextStep.id }).eq("id", contact.id);
                 const { data: nextTemplate } = await supabase.from("bot_templates").select("*").eq("step_id", nextStep.id).order("created_at", { ascending: true }).limit(1).single();
-                if (nextTemplate && nextTemplate.mensaje) {
+                
+                if (nextTemplate && nextTemplate.mensaje && nextTemplate.mensaje.trim() !== "") {
                   const msg = interpolateTemplate(nextTemplate.mensaje, contact);
                   const sendResult = await sendWahaMessage(from, msg);
                   await supabase.from("crm_conversations").insert([{
@@ -203,6 +220,21 @@ export async function executeAIForContact(contactId: string, phone: string, from
                     content: sendResult.success ? msg : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
                     metadata: { template_id: nextTemplate.id, ai_action: "avanzar", sendResult }
                   }]);
+                } else if (nextStep.ai_goal) {
+                  // Flujo 100% conversacional: Evaluamos la nueva etapa inmediatamente con el mismo mensaje del usuario
+                  try {
+                    const aiResultNew = await evaluateGatekeeper(chatHistory || [], nextStep, lastContent);
+                    if (aiResultNew.accion === "responder" && aiResultNew.respuesta_ia) {
+                      const sendResult = await sendWahaMessage(from, aiResultNew.respuesta_ia);
+                      await supabase.from("crm_conversations").insert([{
+                        contact_id: contact.id, direction: "outbound", type: "text",
+                        content: sendResult.success ? aiResultNew.respuesta_ia : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+                        metadata: { ai_action: "responder_avance", sendResult }
+                      }]);
+                    }
+                  } catch (err) {
+                    console.error("Error evaluando nueva etapa conversacional:", err);
+                  }
                 }
               } else {
                 const endMsg = "¡Excelente! 🎉 Ya tenemos toda la información que necesitamos. Un asesor te va a contactar pronto para los detalles finales.";
