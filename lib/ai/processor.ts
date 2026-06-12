@@ -148,7 +148,7 @@ export async function executeAIForContact(contactId: string, phone: string, from
           if (advanceIntent) {
             const { data: nextStep } = await supabase
               .from("funnel_steps")
-              .select("*")
+              .select(`*, funnels(bot_prompt, knowledge_base)`)
               .eq("funnel_id", currentStep.funnel_id)
               .gt("orden", currentStep.orden)
               .order("orden", { ascending: true })
@@ -170,6 +170,7 @@ export async function executeAIForContact(contactId: string, phone: string, from
                 } else if (nextStep.ai_goal) {
                   // Flujo 100% conversacional: Evaluamos la nueva etapa inmediatamente con el mismo mensaje del usuario
                   try {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
                     const aiResultNew = await evaluateGatekeeper(chatHistory || [], nextStep, lastContent);
                     if (aiResultNew.accion === "responder" && aiResultNew.respuesta_ia) {
                       const sendResult = await sendWahaMessage(from, aiResultNew.respuesta_ia);
@@ -181,6 +182,13 @@ export async function executeAIForContact(contactId: string, phone: string, from
                     }
                   } catch (err) {
                     console.error("Error evaluando nueva etapa conversacional (keyword):", err);
+                    const fallbackMsg = "Por favor, aguardá un momento. ¿En qué más puedo ayudarte?";
+                    await sendWahaMessage(from, fallbackMsg);
+                    await supabase.from("crm_conversations").insert([{
+                        contact_id: contact.id, direction: "outbound", type: "text",
+                        content: fallbackMsg,
+                        metadata: { ai_action: "responder_avance_keyword_error" }
+                    }]);
                   }
                 }
               } else {
@@ -201,7 +209,7 @@ export async function executeAIForContact(contactId: string, phone: string, from
             if (aiResult.accion === "avanzar") {
               const { data: nextStep } = await supabase
                 .from("funnel_steps")
-                .select("*")
+                .select(`*, funnels(bot_prompt, knowledge_base)`)
                 .eq("funnel_id", currentStep.funnel_id)
                 .gt("orden", currentStep.orden)
                 .order("orden", { ascending: true })
@@ -223,6 +231,7 @@ export async function executeAIForContact(contactId: string, phone: string, from
                 } else if (nextStep.ai_goal) {
                   // Flujo 100% conversacional: Evaluamos la nueva etapa inmediatamente con el mismo mensaje del usuario
                   try {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
                     const aiResultNew = await evaluateGatekeeper(chatHistory || [], nextStep, lastContent);
                     if (aiResultNew.accion === "responder" && aiResultNew.respuesta_ia) {
                       const sendResult = await sendWahaMessage(from, aiResultNew.respuesta_ia);
@@ -234,6 +243,13 @@ export async function executeAIForContact(contactId: string, phone: string, from
                     }
                   } catch (err) {
                     console.error("Error evaluando nueva etapa conversacional:", err);
+                    const fallbackMsg = "Por favor, aguardá un momento. ¿En qué más puedo ayudarte?";
+                    await sendWahaMessage(from, fallbackMsg);
+                    await supabase.from("crm_conversations").insert([{
+                        contact_id: contact.id, direction: "outbound", type: "text",
+                        content: fallbackMsg,
+                        metadata: { ai_action: "responder_avance_error" }
+                    }]);
                   }
                 }
               } else {

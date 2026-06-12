@@ -3,7 +3,7 @@ async function run() {
   const url = 'https://openrouter.ai/api/v1/chat/completions'; 
   const apiKey = process.env.OPENROUTER_API_KEY;
   const body = { 
-    model: 'google/gemini-flash-1.5', 
+    model: 'google/gemini-2.5-flash', 
     messages: [
       {
         role: 'system', 
