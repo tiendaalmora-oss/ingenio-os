@@ -10,8 +10,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log("🔔 Webhook WhatsApp Recibido:", JSON.stringify(body, null, 2));
 
-    if (body.event !== "message" || !body.payload) {
-      return NextResponse.json({ success: true, message: "No es un mensaje entrante" });
+    if (!["message", "message.any"].includes(body.event) || !body.payload) {
+      return NextResponse.json({ success: true, message: "No es un evento de mensaje" });
     }
 
     const { fromMe } = body.payload;
