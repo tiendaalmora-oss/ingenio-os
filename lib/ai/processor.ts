@@ -107,7 +107,7 @@ export async function executeAIForContact(contactId: string, phone: string, from
         const isNewContact = inboundCount <= 1; // Simplificado
         
         if (isNewContact) {
-          const fallbackMsg = "¡Hola! Disculpá la demora, estamos a full con las activaciones hoy. 🙏\n\nContanos brevemente: ¿Qué producto o sistema te interesa? ¿O ya sos cliente nuestro?";
+          const fallbackMsg = "¡Hola! Gracias por escribir.\n\nContanos brevemente: ¿Qué producto o sistema te interesa? ¿O ya sos cliente nuestro?";
           await sendWahaMessage(from, fallbackMsg);
           await supabase.from("crm_conversations").insert([{
             contact_id: contact.id, direction: "outbound", type: "text",
