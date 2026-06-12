@@ -107,14 +107,14 @@ export async function executeAIForContact(contactId: string, phone: string, from
         const isNewContact = inboundCount <= 1; // Simplificado
         
         if (isNewContact) {
-          const fallbackMsg = "¡Hola! Gracias por contactarte con nosotros. 👋\n\nContanos, ¿en qué te podemos ayudar el día de hoy?";
+          const fallbackMsg = "¡Hola! Disculpá la demora, estamos a full con las activaciones hoy. 🙏\n\nContanos brevemente: ¿Qué producto o sistema te interesa? ¿O ya sos cliente nuestro?";
           await sendWahaMessage(from, fallbackMsg);
           await supabase.from("crm_conversations").insert([{
             contact_id: contact.id, direction: "outbound", type: "text",
             content: fallbackMsg, metadata: { router_fallback: true }
           }]);
         } else if (inboundCount === 2 || inboundCount === 3) {
-          const nudgeMsg = "Hola de nuevo 👋 Queremos ayudarte, solo contanos: ¿qué producto o servicio te interesa?\n\nPor ejemplo podés escribir: *\"demo AviOS\"*, *\"info balanza\"*, *\"activar licencia\"*, etc. 😊";
+          const nudgeMsg = "Hola de nuevo 👋 Para poder derivarte rápido, por favor contanos: ¿Qué producto estás buscando? (Ej: *\"Demo AviOS\"*, *\"Balanza\"*, *\"Renovar licencia\"*).";
           await sendWahaMessage(from, nudgeMsg);
           await supabase.from("crm_conversations").insert([{
             contact_id: contact.id, direction: "outbound", type: "text",
