@@ -384,9 +384,16 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
                               </optgroup>
                             ))
                           ) : (
-                            steps.map((s: any) => (
-                              <option key={s.id} value={s.id} className="bg-zinc-900 text-white">{s.nombre}</option>
-                            ))
+                            <>
+                              {c.current_step_id && !steps.find((s: any) => s.id === c.current_step_id) && (
+                                <option value={c.current_step_id} className="bg-zinc-900 text-zinc-500" disabled>
+                                  {c.funnel_steps?.nombre || 'Otra etapa'}
+                                </option>
+                              )}
+                              {steps.map((s: any) => (
+                                <option key={s.id} value={s.id} className="bg-zinc-900 text-white">{s.nombre}</option>
+                              ))}
+                            </>
                           )}
                         </select>
                       </td>
