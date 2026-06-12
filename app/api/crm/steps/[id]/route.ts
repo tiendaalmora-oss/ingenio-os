@@ -7,13 +7,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const body = await req.json();
     
     // Extraemos los campos permitidos para actualización
-    const { nombre, descripcion, color, ai_goal, ai_faq, followup_delay_minutes, followup_template, followup_condition, drips_config } = body;
+    const { nombre, descripcion, color, ai_goal, ai_valid_intents, ai_faq, followup_delay_minutes, followup_template, followup_condition, drips_config } = body;
 
     const updates: any = {};
     if (nombre !== undefined) updates.nombre = nombre;
     if (descripcion !== undefined) updates.descripcion = descripcion;
     if (color !== undefined) updates.color = color;
     if (ai_goal !== undefined) updates.ai_goal = ai_goal;
+    if (ai_valid_intents !== undefined) updates.ai_valid_intents = ai_valid_intents;
     if (ai_faq !== undefined) updates.ai_faq = ai_faq;
     
     // Mantenemos retrocompatibilidad si envían los campos viejos
