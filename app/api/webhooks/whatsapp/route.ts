@@ -61,7 +61,7 @@ async function processMessageImmediate(body: any) {
         }]);
       }
 
-      let multimediaMsg = `Hola${pushName ? " " + pushName : ""} 👋 Recibimos tu ${type === 'audio' || type === 'ptt' ? 'audio' : type === 'image' ? 'imagen' : type === 'video' ? 'video' : 'archivo'}. En cuanto un asesor esté disponible lo va a revisar y te responde. 🙏`;
+      let multimediaMsg = "¡Hola! Cómo estás. Te comento que por una cuestión de orden y para que nos quede registrado el historial técnico de cada comercio, manejamos toda nuestra atención, soporte y ventas exclusivamente por mensaje de texto o audios de WhatsApp por este medio. 📋✍️\n\nAdelantame tu consulta por acá (puede ser por audio si te queda más cómodo) y te respondo al toque con toda la información técnica.";
       
       await sendWahaMessage(from, multimediaMsg);
 
@@ -78,6 +78,30 @@ async function processMessageImmediate(body: any) {
       }
 
       return;
+    }
+
+    // Interceptar intenciones de llamada en mensajes de texto
+    if (type === "chat" || !type) {
+      const lowerContent = (content || "").toLowerCase();
+      const callKeywords = ["llamar", "llamada", "llamame", "llamo", "puedo llamar", "audio", "te llamo"];
+      const isCallIntent = callKeywords.some(kw => lowerContent.includes(kw));
+      
+      // We will only auto-intercept if it's explicitly asking for a call, but let's be careful not to block legit sales messages like "como se llama". 
+      // Actually, regex: \b(llamar|llamada|llamame|te llamo|los llamo|puedo llamar)\b
+      const callRegex = /\b(llamar|llamada|llamame|llamáme|te llamo|los llamo|puedo llamar)\b/i;
+      if (callRegex.test(lowerContent)) {
+        let { data: contactCheck } = await supabase.from("crm_contacts").select("id, name").eq("phone", phone).single();
+        if (contactCheck) {
+          const callMsg = "¡Hola! Cómo estás. Te comento que por una cuestión de orden y para que nos quede registrado el historial técnico de cada comercio, manejamos toda nuestra atención, soporte y ventas exclusivamente por mensaje de texto o audios de WhatsApp por este medio. 📋✍️\n\nAdelantame tu consulta por acá (puede ser por audio si te queda más cómodo) y te respondo al toque con toda la información técnica.";
+          await sendWahaMessage(from, callMsg);
+          await supabase.from("crm_conversations").insert([{
+            contact_id: contactCheck.id, direction: "outbound", type: "text",
+            content: callMsg, metadata: { intercepted_call_intent: true }
+          }]);
+          await supabase.from("crm_contacts").update({ status: "humano" }).eq("id", contactCheck.id);
+          return; // Detenemos el flujo aquí
+        }
+      }
     }
 
     // ==============================================================
