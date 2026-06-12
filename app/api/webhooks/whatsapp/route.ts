@@ -56,6 +56,8 @@ async function processMessageImmediate(body: any) {
         contactCheck = newC;
       }
 
+      if (!contactCheck) return NextResponse.json({ success: false, error: "Contact could not be created" });
+
       if (type === "audio" || type === "ptt") {
         // Log original inbound
         await supabase.from("crm_conversations").insert([{
