@@ -369,23 +369,23 @@ function ContactsView({ activeFunnelId, funnels }: { activeFunnelId: string, fun
                       </td>
                       <td className="px-4 py-3">
                         <select 
-                          className="bg-transparent border border-zinc-700 rounded px-2 py-1 text-xs font-medium focus:outline-none max-w-[150px] truncate"
+                          className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-medium focus:outline-none max-w-[150px] truncate"
                           style={{ color: step?.color || '#fff' }}
                           value={c.current_step_id || ""}
                           onChange={(e) => { e.stopPropagation(); changeContactStep(c.id, e.target.value); }}
                         >
-                          <option value="">Sin etapa</option>
+                          <option value="" className="bg-zinc-900 text-white">Sin etapa</option>
                           {activeFunnelId === "all" || activeFunnelId === "limbo" ? (
                             funnels.map(f => (
-                              <optgroup key={f.id} label={f.nombre}>
+                              <optgroup key={f.id} label={f.nombre} className="bg-zinc-900 text-zinc-400 font-bold">
                                 {(f.funnel_steps || []).map((s: any) => (
-                                  <option key={s.id} value={s.id}>{s.nombre}</option>
+                                  <option key={s.id} value={s.id} className="bg-zinc-900 text-white">{s.nombre}</option>
                                 ))}
                               </optgroup>
                             ))
                           ) : (
                             steps.map((s: any) => (
-                              <option key={s.id} value={s.id} style={{ color: '#fff' }}>{s.nombre}</option>
+                              <option key={s.id} value={s.id} className="bg-zinc-900 text-white">{s.nombre}</option>
                             ))
                           )}
                         </select>
