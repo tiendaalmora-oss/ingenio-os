@@ -61,7 +61,7 @@ async function processMessageImmediate(body: any) {
         }]);
       }
 
-      let multimediaMsg = "¡Hola! Cómo estás. Te comento que por una cuestión de orden y para que nos quede registrado el historial técnico de cada comercio, manejamos toda nuestra atención, soporte y ventas exclusivamente por mensaje de texto o audios de WhatsApp por este medio. 📋✍️\n\nAdelantame tu consulta por acá (puede ser por audio si te queda más cómodo) y te respondo al toque con toda la información técnica.";
+      let multimediaMsg = `Hola${pushName ? " " + pushName : ""} 👋 Recibimos tu ${type === 'audio' || type === 'ptt' ? 'audio' : type === 'image' ? 'imagen' : type === 'video' ? 'video' : 'archivo'}. En cuanto un asesor esté disponible lo va a revisar y te responderá por este medio. 🙏`;
       
       await sendWahaMessage(from, multimediaMsg);
 
