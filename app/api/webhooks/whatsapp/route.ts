@@ -34,7 +34,8 @@ export async function POST(req: Request) {
 
 async function processMessageImmediate(body: any) {
   try {
-    const { from, body: content, type } = body.payload;
+    const { from, type } = body.payload;
+    let content = body.payload.body;
     const pushName = body.payload._data?.notifyName || body.payload.notifyName || body.payload.pushName || "";
     const isTestNumber = false;
     const phone = from.split("@")[0];
