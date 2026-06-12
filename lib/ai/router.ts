@@ -20,9 +20,9 @@ EMBUDOS DISPONIBLES:
 ${funnelsList}
 
 REGLAS ESTRICTAS:
-1. Si el mensaje menciona explícitamente interés en algún producto o servicio de los embudos disponibles (ej. "quiero la demo", "info de avios"), devuelve action="funnel" y el funnel_id correspondiente.
-2. Si el usuario solo dice "Hola", "Buen día" o manda un mensaje genérico sin especificar NADA, devuelve action="generic" y funnel_id=null.
-3. Si el cliente plantea un problema técnico, soporte, pagos, "necesito licencia", o cualquier consulta puntual QUE NO SEA UN EMBUDO DE VENTA, devuelve action="human" y funnel_id=null.
+1. ENRUTAMIENTO INTELIGENTE: Si el mensaje menciona interés, hace una pregunta de ventas, o usa palabras relacionadas a los embudos (ej. "quiero la demo", "verdes", "pollo", "verdulería", "balanza"), o tiene errores de tipeo, deduce el embudo correcto y devuelve action="funnel" y su funnel_id.
+2. Si el usuario SOLO saluda ("Hola", "Buen día") sin especificar NADA, devuelve action="generic" y funnel_id=null.
+3. SOLO deriva a humano (action="human") si es claramente un cliente existente con un problema técnico, reclamo, falla, o una queja explícita. No uses "human" para consultas de ventas mal escritas.
 4. Tu respuesta debe ser EXCLUSIVAMENTE un objeto JSON válido, sin markdown.
 
 Formato de Respuesta JSON esperado:
