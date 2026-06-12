@@ -4,7 +4,10 @@ export async function classifyGlobalIntent(
 ): Promise<{ action: string, funnel_id: string | null }> {
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
   const rawModel = process.env.OPENROUTER_MODEL || "";
-  const DEFAULT_MODEL = rawModel.trim().replace(/\.+$/, "") || "openai/gpt-4o-mini";
+  let DEFAULT_MODEL = rawModel.trim().replace(/\.+$/, "") || "openai/gpt-4o-mini";
+  if (DEFAULT_MODEL.includes("gemini-1.5")) {
+    DEFAULT_MODEL = "google/gemini-2.5-flash";
+  }
 
   if (!OPENROUTER_API_KEY) {
     throw new Error("OPENROUTER_API_KEY no configurada");
