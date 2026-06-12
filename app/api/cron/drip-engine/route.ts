@@ -99,7 +99,7 @@ export async function GET(req: Request) {
         .from("crm_contacts")
         .select("id, phone, name, ultimo_contacto, last_followup_index")
         .eq("current_step_id", step.id)
-        .eq("status", "activo");
+        .neq("status", "humano");
         
       if (contactsError) {
         console.error(`[DRIP ENGINE] Error buscando contactos para etapa ${step.id}:`, contactsError);
