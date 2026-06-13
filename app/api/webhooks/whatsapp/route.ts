@@ -239,21 +239,22 @@ async function processOutboundBackground(body: any) {
 
     let updateData: any = {
       ultimo_contacto: new Date().toISOString(),
-      ultimo_mensaje: `[Teléfono Físico] ${content ? content.substring(0, 30) : type}`
+      ultimo_mensaje: `[Teléfono Físico] ${content ? content.substring(0, 30) : type}`,
+      status: "humano" // Por defecto, si el humano interviene, pausamos el bot
     };
 
     // Auto-enrutamiento inteligente para Campañas Masivas
-    // Si el texto saliente incluye el enlace a la demo, adelantamos al cliente a la etapa "Interesado"
+    // Si el texto saliente incluye el enlace a la demo, adelantamos al cliente a la etapa "Interesado" y mantenemos el bot
     if (content && typeof content === 'string') {
       const lowerContent = content.toLowerCase();
       if (lowerContent.includes("demoavios") || lowerContent.includes("aviospre")) {
         updateData.current_step_id = "87f36164-3021-4dad-b3df-70d4a68f70ec"; // Interesado Avíos
         updateData.funnel_id = "c4b64445-23c1-4d06-83b4-02d48c2f28cc"; // Avíos
-        updateData.status = "bot";
+        updateData.status = "bot"; // Reactivamos el bot para la campaña
       } else if (lowerContent.includes("demoverdeos")) {
         updateData.current_step_id = "075a9dd0-a090-4335-af48-d2412026533d"; // Interesado VerdeOS
         updateData.funnel_id = "f268d949-4756-4171-98d6-25ef8ba91aa0"; // VerdeOS
-        updateData.status = "bot";
+        updateData.status = "bot"; // Reactivamos el bot para la campaña
       }
     }
 
