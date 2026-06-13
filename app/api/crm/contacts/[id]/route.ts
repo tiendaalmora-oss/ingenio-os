@@ -100,7 +100,16 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       const { data: template } = await supabase.from("bot_templates").select("*").eq("step_id", current_step_id).limit(1).single();
       if (template && template.mensaje && oldContact.phone) {
         const msg = interpolateTemplate(template.mensaje, oldContact);
-        const finalChatId = oldContact.phone.includes("@") ? oldContact.phone : `${oldContact.phone}@c.us`;
+        const { data: lastConv } = await supabase.from("crm_conversations").select("metadata").eq("contact_id", id).eq("direction", "inbound").order("created_at", { ascending: false }).limit(1).single();
+        let finalChatId = `${oldContact.phone}@c.us`;
+        if (lastConv && lastConv.metadata && lastConv.metadata.id && lastConv.metadata.id.remote) {
+          finalChatId = lastConv.metadata.id.remote;
+        } else if (lastConv && lastConv.metadata && lastConv.metadata.from) {
+          finalChatId = lastConv.metadata.from;
+        } else if (oldContact.phone.includes("@")) {
+          finalChatId = oldContact.phone;
+        }
+        
         const wahaUrlBase = WAHA_URL.replace(/\/+$/, '');
         
         try {

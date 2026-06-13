@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/db/supabase";
 import { sendWahaMessage, downloadWahaMedia, transcribeAudio } from "@/lib/utils/whatsapp";
-import { scheduleAIProcessing } from "@/lib/utils/debouncer";
+import { executeAIForContact } from "@/lib/ai/processor";
 
 const MULTIMEDIA_TYPES = ["audio", "ptt", "image", "video", "document", "sticker", "gif"];
 
@@ -200,7 +200,8 @@ async function processMessageImmediate(body: any) {
     // 4. Delegar a la IA (Agrupación / Debouncing de 20s)
     // ==============================================================
     if (contact.status !== "humano") {
-      scheduleAIProcessing(contact.id, phone, from, 15000);
+      // Ejecutamos la IA sincrónicamente para evitar que Vercel congele el proceso en background
+      await executeAIForContact(contact.id, phone, from);
     }
 
   } catch (err: any) {
@@ -243,10 +244,16 @@ async function processOutboundBackground(body: any) {
       content: content || `[${(type || "multimedia").toUpperCase()}]`, metadata: { source: "physical_phone", payload: body.payload }
     }]);
 
+    let isAutomatedGreeting = false;
+    if (body.payload._data && body.payload._data.automatedGreetingMessageShown === true) {
+      isAutomatedGreeting = true;
+    }
+
     let updateData: any = {
       ultimo_contacto: new Date().toISOString(),
       ultimo_mensaje: `[Teléfono Físico] ${content ? content.substring(0, 30) : type}`,
-      status: "humano" // Por defecto, si el humano interviene, pausamos el bot
+      // Por defecto, si el humano interviene, pausamos el bot. Pero si es saludo automático de WA Business, lo dejamos en bot.
+      status: isAutomatedGreeting ? "bot" : "humano"
     };
 
     // Auto-enrutamiento inteligente para Campañas Masivas
