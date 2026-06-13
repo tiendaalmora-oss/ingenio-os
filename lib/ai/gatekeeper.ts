@@ -5,9 +5,9 @@ export async function evaluateGatekeeper(
 ): Promise<{ accion: "avanzar" | "responder" | "humano"; respuesta_ia: string }> {
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
   const rawModel = process.env.OPENROUTER_MODEL || "";
-  let DEFAULT_MODEL = rawModel.trim().replace(/\.+$/, "") || "anthropic/claude-3.5-sonnet";
-  if (DEFAULT_MODEL.includes("gemini")) {
-    DEFAULT_MODEL = "anthropic/claude-3.5-sonnet";
+  let DEFAULT_MODEL = rawModel.trim().replace(/\.+$/, "") || "anthropic/claude-opus-4.8-fast";
+  if (DEFAULT_MODEL.includes("claude-3.5-sonnet") || DEFAULT_MODEL.includes("gemini")) {
+    DEFAULT_MODEL = "anthropic/claude-opus-4.8-fast";
   }
 
   if (!OPENROUTER_API_KEY) {
