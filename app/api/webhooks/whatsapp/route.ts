@@ -34,7 +34,8 @@ export async function POST(req: Request) {
 
 async function processMessageImmediate(body: any) {
   try {
-    const { from, type } = body.payload;
+    const from = body.payload.from;
+    const type = body.payload.type || body.payload._data?.type || "chat";
     let content = body.payload.body;
     const pushName = body.payload._data?.notifyName || body.payload.notifyName || body.payload.pushName || "";
     const isTestNumber = false;
@@ -206,7 +207,9 @@ async function processMessageImmediate(body: any) {
 
 async function processOutboundBackground(body: any) {
   try {
-    const { to, body: content, type } = body.payload;
+    const to = body.payload.to;
+    const content = body.payload.body;
+    const type = body.payload.type || body.payload._data?.type || "text";
     const phone = to.split("@")[0];
 
     let { data: contact } = await supabase.from("crm_contacts").select("id").eq("phone", phone).single();
