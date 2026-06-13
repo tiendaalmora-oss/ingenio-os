@@ -17,12 +17,15 @@ export async function POST(req: Request) {
     const { fromMe } = body.payload;
 
     if (fromMe) {
+      if (body.payload.source === "api") {
+        return NextResponse.json({ success: true, message: "Ignorando eco de la API" });
+      }
       processOutboundBackground(body).catch(err => console.error("Error en bg outbound:", err));
       return NextResponse.json({ success: true, message: "Sincronizando outbound" });
     }
 
     // Ejecutar procesamiento inmediato (guardar DB y llamar al debouncer)
-    processMessageImmediate(body).catch(err => console.error("Error en procesamiento inmediato:", err));
+    await processMessageImmediate(body);
 
     return NextResponse.json({ success: true, message: "Mensaje encolado en debouncer" });
 
