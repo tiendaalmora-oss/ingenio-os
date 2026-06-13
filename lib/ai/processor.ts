@@ -91,6 +91,7 @@ export async function executeAIForContact(contactId: string, phone: string, from
         }).eq("id", contact.id);
         
         if (stepId) {
+          const { data: firstStepInfo } = await supabase.from("funnel_steps").select("*, funnels(bot_prompt, knowledge_base)").eq("id", stepId).single();
           const { data: template } = await supabase.from("bot_templates").select("*").eq("step_id", stepId).order("created_at", { ascending: true }).limit(1).single();
           if (template && template.mensaje) {
             const msg = interpolateTemplate(template.mensaje, contact);
@@ -100,6 +101,20 @@ export async function executeAIForContact(contactId: string, phone: string, from
               content: sendResult.success ? msg : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
               metadata: { template_id: template.id, sendResult }
             }]);
+          } else if (firstStepInfo && firstStepInfo.ai_goal) {
+            try {
+              const aiResultInit = await evaluateGatekeeper([{role: "user", content: recentInbounds || lastContent}], firstStepInfo, recentInbounds || lastContent);
+              if (aiResultInit.accion === "responder" && aiResultInit.respuesta_ia) {
+                const sendResult = await sendWahaMessage(from, aiResultInit.respuesta_ia);
+                await supabase.from("crm_conversations").insert([{
+                  contact_id: contact.id, direction: "outbound", type: "text",
+                  content: sendResult.success ? aiResultInit.respuesta_ia : `[ERROR WAHA] Falló el envío: ${sendResult.error}`,
+                  metadata: { ai_action: "responder_inicio", sendResult }
+                }]);
+              }
+            } catch(e) {
+              console.error("Error al generar mensaje inicial con IA:", e);
+            }
           }
         }
       } else {
