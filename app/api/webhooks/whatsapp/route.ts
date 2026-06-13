@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const { fromMe } = body.payload;
 
     if (fromMe) {
-      if (body.payload.source === "api") {
+      if (body.payload?.source === "api" || body.payload?._data?.source === "api") {
         return NextResponse.json({ success: true, message: "Ignorando eco de la API" });
       }
       processOutboundBackground(body).catch(err => console.error("Error en bg outbound:", err));
