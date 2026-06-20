@@ -114,7 +114,7 @@ export default function CreativeHQClient({ slug, initialData }: { slug: string, 
 
   return (
     <main className="bg-zinc-950 text-white min-h-screen flex overflow-hidden">
-      <Sidebar activeModule={"creative_lab"} onSelect={handleSidebarSelect} />
+      <Sidebar activeModule={"creative_factory"} onSelect={handleSidebarSelect} />
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden bg-black">
         <TopBar title={`Creative Lab: ${product?.name || slug}`} />
