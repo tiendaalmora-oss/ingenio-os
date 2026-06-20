@@ -8,7 +8,7 @@ import { OfferGeneratorModule } from "../../os/modules/OfferGeneratorModule";
 import { ProductFactoryModule } from "../../os/modules/ProductFactoryModule";
 import { LandingFactoryModule } from "../../os/modules/LandingFactoryModule";
 import { MessagingCRMModule } from "../../os/modules/MessagingCRMModule";
-import { CreativeLabModule } from "../../os/modules/CreativeLabModule";
+import { CreativeFactoryModule } from "../../os/modules/CreativeFactoryModule";
 import { MetaOpsModule } from "../../os/modules/MetaOpsModule";
 import { MetricsModule } from "../../os/modules/MetricsModule";
 import { AIAgentsModule } from "../../os/modules/AIAgentsModule";
@@ -26,7 +26,7 @@ export default function PatternsPage() {
     offer_generator: "Generador de Ofertas PVE",
     product_factory: "Fábrica de Productos",
     landing_factory: "Fábrica de Landings",
-    creative_lab: "Laboratorio Creativo",
+    creative_factory: "Fábrica Creativa",
     meta_ops: "Control Meta Ops",
     metrics: "Motor de Decisiones — Métricas",
     ai_agents: "Agentes IA",
@@ -49,7 +49,7 @@ export default function PatternsPage() {
           {activeModule === "crm" && <MessagingCRMModule />}
           {activeModule === "product_factory" && <ProductFactoryModule />}
           {activeModule === "landing_factory" && <LandingFactoryModule />}
-          {activeModule === "creative_lab" && <CreativeLabModule />}
+          {activeModule === "creative_factory" && <CreativeFactoryModule />}
           {activeModule === "meta_ops" && <MetaOpsModule />}
           {activeModule === "metrics" && <MetricsModule />}
           {activeModule === "ai_agents" && <AIAgentsModule />}
