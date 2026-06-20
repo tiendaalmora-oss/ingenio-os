@@ -3,15 +3,17 @@ import React from "react";
 export type ModuleId =
   | "operations"
   | "crm"
+  | "offer_generator"
   | "product_factory"
   | "landing_factory"
-  | "creative_lab"
+  | "creative_factory"
   | "meta_ops"
   | "metrics"
   | "ai_agents"
   | "deployment_center"
   | "integrations"
-  | "workflows";
+  | "workflows"
+  | "patterns";
 
 interface SidebarProps {
   activeModule: ModuleId;
@@ -21,13 +23,15 @@ interface SidebarProps {
 export function Sidebar({ activeModule, onSelect }: SidebarProps) {
   const coreModules: { id: ModuleId; label: string; icon: string }[] = [
     { id: "operations", label: "Operaciones", icon: "🌐" },
+    { id: "offer_generator", label: "Generador de Ofertas", icon: "⚡" },
+    { id: "creative_factory", label: "Fábrica Creativa", icon: "✨" },
     { id: "crm", label: "CRM & Embudos", icon: "💬" },
     { id: "product_factory", label: "Fábrica de Productos", icon: "🏭" },
     { id: "landing_factory", label: "Fábrica de Landings", icon: "🎨" },
-    { id: "creative_lab", label: "Laboratorio Creativo", icon: "✨" },
     { id: "meta_ops", label: "Meta Ops", icon: "📢" },
     { id: "metrics", label: "Métricas", icon: "📈" },
     { id: "ai_agents", label: "Agentes IA", icon: "🤖" },
+    { id: "patterns", label: "Winning Patterns", icon: "🧠" },
   ];
 
   const sistemaModules: { id: ModuleId; label: string; icon: string }[] = [

@@ -1,32 +1,32 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sidebar, ModuleId } from "../os/components/Sidebar";
-import { TopBar } from "../os/components/TopBar";
-import { OperationsModule } from "../os/modules/OperationsModule";
-import { OfferGeneratorModule } from "../os/modules/OfferGeneratorModule";
-import { CreativeFactoryModule } from "../os/modules/CreativeFactoryModule";
-import { ProductFactoryModule } from "../os/modules/ProductFactoryModule";
-import { LandingFactoryModule } from "../os/modules/LandingFactoryModule";
-import { MessagingCRMModule } from "../os/modules/MessagingCRMModule";
-import { MetaOpsModule } from "../os/modules/MetaOpsModule";
-import { MetricsModule } from "../os/modules/MetricsModule";
-import { AIAgentsModule } from "../os/modules/AIAgentsModule";
-import { DeploymentCenterModule } from "../os/modules/DeploymentCenterModule";
-import { IntegrationsModule } from "../os/modules/IntegrationsModule";
-import { WorkflowsModule } from "../os/modules/WorkflowsModule";
-import { WinningPatternsModule } from "../os/modules/WinningPatternsModule";
+import { Sidebar, ModuleId } from "../../os/components/Sidebar";
+import { TopBar } from "../../os/components/TopBar";
+import { OperationsModule } from "../../os/modules/OperationsModule";
+import { OfferGeneratorModule } from "../../os/modules/OfferGeneratorModule";
+import { ProductFactoryModule } from "../../os/modules/ProductFactoryModule";
+import { LandingFactoryModule } from "../../os/modules/LandingFactoryModule";
+import { MessagingCRMModule } from "../../os/modules/MessagingCRMModule";
+import { CreativeLabModule } from "../../os/modules/CreativeLabModule";
+import { MetaOpsModule } from "../../os/modules/MetaOpsModule";
+import { MetricsModule } from "../../os/modules/MetricsModule";
+import { AIAgentsModule } from "../../os/modules/AIAgentsModule";
+import { DeploymentCenterModule } from "../../os/modules/DeploymentCenterModule";
+import { IntegrationsModule } from "../../os/modules/IntegrationsModule";
+import { WorkflowsModule } from "../../os/modules/WorkflowsModule";
+import { WinningPatternsModule } from "../../os/modules/WinningPatternsModule";
 
-export default function IngenioOSDashboard() {
-  const [activeModule, setActiveModule] = useState<ModuleId>("operations");
+export default function PatternsPage() {
+  const [activeModule, setActiveModule] = useState<ModuleId>("patterns");
 
   const moduleTitles: Record<ModuleId, string> = {
     operations: "Operaciones Globales",
     crm: "CRM y Mensajería",
     offer_generator: "Generador de Ofertas PVE",
-    creative_factory: "Fábrica Creativa",
     product_factory: "Fábrica de Productos",
     landing_factory: "Fábrica de Landings",
+    creative_lab: "Laboratorio Creativo",
     meta_ops: "Control Meta Ops",
     metrics: "Motor de Decisiones — Métricas",
     ai_agents: "Agentes IA",
@@ -46,10 +46,10 @@ export default function IngenioOSDashboard() {
         <div className="flex-1 overflow-y-auto">
           {activeModule === "operations" && <OperationsModule />}
           {activeModule === "offer_generator" && <OfferGeneratorModule />}
-          {activeModule === "creative_factory" && <CreativeFactoryModule />}
           {activeModule === "crm" && <MessagingCRMModule />}
           {activeModule === "product_factory" && <ProductFactoryModule />}
           {activeModule === "landing_factory" && <LandingFactoryModule />}
+          {activeModule === "creative_lab" && <CreativeLabModule />}
           {activeModule === "meta_ops" && <MetaOpsModule />}
           {activeModule === "metrics" && <MetricsModule />}
           {activeModule === "ai_agents" && <AIAgentsModule />}
