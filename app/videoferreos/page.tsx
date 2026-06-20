@@ -50,8 +50,8 @@ export default function VideoFerreosLanding() {
             muted 
             loop
         >
-            {/* Video real de FerreOS */}
-            <source src="/videos/ferreos4x4.mp4" type="video/mp4" />
+            {/* Video real de FerreOS servido por API para evadir restricciones de volumen/estáticos */}
+            <source src="/api/videos/ferreos4x4" type="video/mp4" />
         </video>
 
         {/* Gradiente superpuesto para leer el texto inferior */}
