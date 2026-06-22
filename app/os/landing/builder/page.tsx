@@ -203,32 +203,49 @@ export default function LandingBuilderPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validación de tamaño en el cliente (200 MB)
-    if (file.size > 200 * 1024 * 1024) {
-      setMessage({ type: 'error', text: 'El video supera el límite de 200 MB.' });
+    // Validación de tamaño en el cliente (1 GB)
+    if (file.size > 1024 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'El video supera el límite de 1 GB.' });
       return;
     }
 
     setIsUploadingVideo(true);
-    setMessage({ type: 'success', text: `Subiendo video "${file.name}"... esto puede tardar unos segundos.` });
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("slug", slug.trim() !== "" ? slug.trim() : "manual_uploads");
-    formData.append("folder", "videos");
+    setMessage({ type: 'success', text: `Preparando carga segura a la nube para "${file.name}"...` });
 
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
+      // 1. Pedir URL firmada de Supabase
+      const presignRes = await fetch("/api/videos/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type })
+      });
+      const presignData = await presignRes.json();
 
-      if (data.success) {
-        setUploadedVideos(prev => [...prev, data.url]);
-        setActiveBank('videos');
-        setMessage({ type: 'success', text: `¡Video "${file.name}" subido exitosamente!` });
-        setTimeout(() => setMessage(null), 4000);
-      } else {
-        throw new Error(data.error || "Error al subir el video");
+      if (!presignData.success) {
+        throw new Error(presignData.error || "Error al obtener URL de carga segura");
       }
+
+      setMessage({ type: 'success', text: `Subiendo "${file.name}" directamente a la nube (0%)... esto puede tardar unos minutos dependiendo de tu internet.` });
+
+      // 2. Subir directamente a Supabase Storage (Bypassea Next.js y Vercel/Easypanel limits!)
+      const uploadRes = await fetch(presignData.signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type
+        },
+        body: file
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error("La subida a la nube falló. Verifica tu conexión a internet.");
+      }
+
+      // 3. Obtener la URL pública final
+      setUploadedVideos(prev => [...prev, presignData.publicUrl]);
+      setActiveBank('videos');
+      setMessage({ type: 'success', text: `¡Video "${file.name}" subido exitosamente a la nube!` });
+      setTimeout(() => setMessage(null), 4000);
+
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : String(err) });
     } finally {
