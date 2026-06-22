@@ -116,8 +116,8 @@ export async function proxy(request: NextRequest) {
   // Determine if we're on a root domain
   if (ROOT_DOMAINS.includes(cleanHostname)) {
     // ---- PASSWORD PROTECTION (Dashboard only) ----
-    // Only protect dashboard routes starting with /os
-    if (pathname.startsWith("/os")) {
+    // Protect dashboard routes starting with /os or /hq
+    if (pathname.startsWith("/os") || pathname.startsWith("/hq")) {
       // Si el cliente intenta entrar al OS por el dominio público de ofertas, lo bloqueamos
       if (hostname === "oferta.ingeniodigital.shop") {
         return new NextResponse("Not Found", { status: 404 });
