@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/db/supabase";
 
 type FactoryStep = "select_idea" | "hooks" | "images" | "scripts" | "done";
 
@@ -25,8 +24,15 @@ export function CreativeFactoryModule() {
   // 1. Fetch Ideas
   useEffect(() => {
     const fetchIdeas = async () => {
-      const { data, error } = await supabase.from("pve_ideas").select("*").order("created_at", { ascending: false });
-      if (data) setIdeas(data);
+      try {
+        const res = await fetch("/api/ideas");
+        const data = await res.json();
+        if (data.success && data.ideas) {
+          setIdeas(data.ideas);
+        }
+      } catch (err) {
+        console.error("Error fetching ideas", err);
+      }
     };
     fetchIdeas();
   }, []);

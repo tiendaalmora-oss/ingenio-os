@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { supabase } from "@/lib/db/supabase";
 
 type Step = 
   | "niche" 
@@ -54,24 +53,32 @@ export function OfferGeneratorModule() {
   const handleSaveToSupabase = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from("pve_ideas").insert([{
-        niche,
-        pain_point: painPoints,
-        offer,
-        promise,
-        landing_copy: landing,
-        whatsapp_opener: whatsapp,
-        ad_script: adScript
-      }]);
+      const res = await fetch("/api/ideas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: niche,
+          niche: niche,
+          notes: `Promesa: ${promise}\n\nHooks:\n${hooks}\n\nGuion:\n${adScript}`,
+          pain_points: painPoints.split(',').map(p => p.trim()),
+          competitors: [],
+          status: "idea"
+        })
+      });
       
-      if (error) throw error;
-      alert("¡Hipótesis de negocio guardada en PVE Ideas exitosamente!");
-      setCurrentStep("niche"); // Reset
-    } catch (error: any) {
-      console.error(error);
-      alert("Error al guardar: " + error.message);
+      const data = await res.json();
+      if (!data.success) {
+        alert("Error al guardar la idea: " + (data.error || "Desconocido"));
+      } else {
+        alert("¡Idea guardada exitosamente en Operaciones!");
+        setCurrentStep("summary");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error al intentar guardar la idea en la base de datos.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
