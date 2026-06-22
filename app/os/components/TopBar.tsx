@@ -36,11 +36,7 @@ export function TopBar({ title }: TopBarProps) {
         <div className="w-px h-5 bg-zinc-800" />
 
         <div className="text-xs text-zinc-500">
-          {new Date().toLocaleDateString("es-AR", {
-            weekday: "short",
-            day: "numeric",
-            month: "short",
-          })}
+          <ClientDate />
         </div>
 
         <button className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center hover:bg-zinc-700 transition-colors">
@@ -49,4 +45,20 @@ export function TopBar({ title }: TopBarProps) {
       </div>
     </header>
   );
+}
+
+function ClientDate() {
+  const [dateStr, setDateStr] = React.useState("");
+  
+  React.useEffect(() => {
+    setDateStr(
+      new Date().toLocaleDateString("es-AR", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })
+    );
+  }, []);
+
+  return <span>{dateStr}</span>;
 }
