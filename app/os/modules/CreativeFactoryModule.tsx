@@ -84,8 +84,13 @@ export function CreativeFactoryModule() {
       }
 
       if (inserts.length > 0) {
-        const { error } = await supabase.from("pve_creative_assets").insert(inserts);
-        if (error) throw error;
+        const res = await fetch("/api/ideas/assets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ inserts })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
         alert("¡Activos guardados exitosamente en la Creative Vault!");
         setStep("done");
       } else {
