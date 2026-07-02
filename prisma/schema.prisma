@@ -1,0 +1,98 @@
+// This is your Prisma schema file
+// Database provider configured for PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String      @id @default(uuid())
+  email     String      @unique
+  name      String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  workspaces Workspace[]
+}
+
+// 1. Workspaces Inteligentes (Aislamiento Total)
+model Workspace {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones del Executive Engine
+  dnaPrinciples  DnaPrinciple[]
+  decisions      DecisionRecord[]
+  timelineEvents TimelineEvent[]
+  contextSnapshot ContextSnapshot?
+  goals          Goal[]
+}
+
+// 2. Executive DNA
+model DnaPrinciple {
+  id          String   @id @default(uuid())
+  content     String
+  category    String   // e.g., "Operaciones", "Ventas", "Liderazgo"
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+// 3. Motor de Decisiones
+model DecisionRecord {
+  id             String   @id @default(uuid())
+  title          String
+  context        String   // Contexto y razonamiento de la decisión
+  expectedOutcome String?
+  actualOutcome  String?  // Llenado en retrospectiva
+  status         String   @default("PENDING_REVIEW") // PENDING_REVIEW, EVALUATED
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  evaluatedAt    DateTime?
+}
+
+// 4. Timeline Empresarial
+model TimelineEvent {
+  id          String   @id @default(uuid())
+  eventType   String   // "DECISION", "LEARNING", "MILESTONE"
+  description String
+  metadata    Json?
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+// 5. Memoria de Contexto (Instantáneas)
+model ContextSnapshot {
+  id            String   @id @default(uuid())
+  lastViewedUrl String?
+  activeMode    String?  // "CEO", "CTO", etc.
+  pendingDraft  String?
+  workspaceId   String   @unique
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  updatedAt     DateTime @updatedAt
+}
+
+// Metas y Misiones (Alineadas al Mission Control)
+model Goal {
+  id          String   @id @default(uuid())
+  title       String
+  type        String   // "MISSION", "YEAR", "QUARTER", "MONTH", "WEEK"
+  progress    Float    @default(0)
+  parentId    String?
+  parent      Goal?    @relation("GoalHierarchy", fields: [parentId], references: [id])
+  children    Goal[]   @relation("GoalHierarchy")
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
