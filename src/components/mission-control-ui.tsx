@@ -9,15 +9,17 @@ import {
   Home, MessageSquare, Users, BrainCircuit, Puzzle, Bot, 
   Database, GitMerge, Zap, BarChart, Plug, Store, Settings,
   Activity, CheckCircle2, AlertTriangle, TrendingUp, DollarSign,
-  Smartphone, Server, Network
+  Smartphone, Server, Network, Building
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+import { BusinessStudioUI } from "./business-studio-ui";
 
 const SIDEBAR_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: Home },
   { id: 'conversaciones', label: 'Conversaciones', icon: MessageSquare },
   { id: 'leads', label: 'Leads', icon: Users },
-  { id: 'knowledge', label: 'Knowledge Center', icon: BrainCircuit },
+  { id: 'business-studio', label: 'Business Studio', icon: Building },
   { id: 'skills', label: 'Skills', icon: Puzzle },
   { id: 'agentes', label: 'Agentes', icon: Bot },
   { id: 'memory', label: 'Memory Center', icon: Database },
@@ -30,7 +32,7 @@ const SIDEBAR_ITEMS = [
 ];
 
 export function MissionControlUI() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('business-studio');
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground font-sans">
@@ -98,7 +100,8 @@ export function MissionControlUI() {
               transition={{ duration: 0.2 }}
             >
               {activeTab === 'dashboard' && <DashboardView />}
-              {activeTab !== 'dashboard' && (
+              {activeTab === 'business-studio' && <BusinessStudioUI />}
+              {activeTab !== 'dashboard' && activeTab !== 'business-studio' && (
                 <div className="flex flex-col items-center justify-center h-[60vh] border border-dashed border-border/50 rounded-2xl bg-card/20">
                   <h2 className="text-2xl font-light text-muted-foreground mb-2">Sección en construcción</h2>
                   <p className="text-sm text-muted-foreground/70">Módulo: {activeTab}</p>
