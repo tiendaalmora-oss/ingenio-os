@@ -7,6 +7,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -34,6 +35,12 @@ model Workspace {
   timelineEvents TimelineEvent[]
   contextSnapshot ContextSnapshot?
   goals          Goal[]
+  queueActions   QueueAction[]
+  strategicMemory StrategicMemory[]
+  impactScores   ImpactScore[]
+  healthMetrics  HealthMetric[]
+  executiveTools ExecutiveTool[]
+  toolExecutions ToolExecution[]
 }
 
 // 2. Executive DNA
@@ -95,4 +102,89 @@ model Goal {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// Executive Queue (Acciones Priorizadas por Impacto)
+model QueueAction {
+  id              String   @id @default(uuid())
+  title           String
+  expectedImpact  Float    // Score de impacto 0-100
+  reason          String
+  relatedGoalId   String?
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  status          String   @default("PENDING") // PENDING, DONE, REJECTED
+  createdAt       DateTime @default(now())
+  resolvedAt      DateTime?
+}
+
+// Strategic Memory (Aprendizaje del Executive Loop)
+model StrategicMemory {
+  id              String   @id @default(uuid())
+  recommendation  String
+  userDecision    String
+  actualResult    String?
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+}
+
+// Impact Score (Medición Diaria)
+model ImpactScore {
+  id          String   @id @default(uuid())
+  date        DateTime @default(now())
+  score       Float    // Score acumulado del día
+  details     Json?    // Desglose de qué sumó impacto
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, date])
+}
+
+// Executive Health (Panel de Salud)
+model HealthMetric {
+  id          String   @id @default(uuid())
+  category    String   // "Ventas", "Caja", "Marketing", "Producto", "Riesgos", etc.
+  status      String   // "HEALTHY", "WARNING", "CRITICAL"
+  value       String?
+  notes       String?
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workspaceId, category])
+}
+
+// ==========================================
+// ACTION ENGINE & TOOL REGISTRY
+// ==========================================
+
+model ExecutiveTool {
+  id              String   @id @default(uuid())
+  name            String   // ej: "crear_tarea", "enviar_email"
+  description     String
+  category        String   // ej: "Goals", "Tasks", "Communication"
+  permissions     String   // ej: "READ", "WRITE", "CRITICAL"
+  parameters      Json     // Schema de parametros esperados
+  expectedResult  String
+  status          String   @default("ACTIVE") // ACTIVE, DISABLED
+  workspaceId     String?
+  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  executions      ToolExecution[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ToolExecution {
+  id              String   @id @default(uuid())
+  toolId          String
+  tool            ExecutiveTool @relation(fields: [toolId], references: [id])
+  agent           String   // CEO, CTO, CMO, Coach, Loop
+  payload         Json     // Parametros enviados
+  status          String   @default("PENDING_APPROVAL") // AUTO_EXECUTED, PENDING_APPROVAL, APPROVED, REJECTED, EXECUTED, FAILED
+  result          Json?
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  executedAt      DateTime?
 }

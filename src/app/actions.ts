@@ -2,61 +2,34 @@
 
 import { prisma } from "@/lib/prisma"
 
-// MOCK: Para desarrollo inicial, aseguramos que exista un contexto activo
-async function ensureActiveContext() {
-  let user = await prisma.user.findFirst();
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        email: "ceo@hermes.os",
-        name: "Emprendedor",
-      }
-    });
-  }
+export async function getActiveContext() {
+  const user = await prisma.user.findFirst({
+    orderBy: { createdAt: 'desc' }
+  });
+  if (!user) return null;
 
-  let workspace = await prisma.workspace.findFirst({
-    where: { userId: user.id }
+  const workspace = await prisma.workspace.findFirst({
+    where: { userId: user.id },
+    orderBy: { createdAt: 'desc' }
   });
 
-  if (!workspace) {
-    workspace = await prisma.workspace.create({
-      data: {
-        name: "Mission Control Alpha",
-        userId: user.id,
-      }
-    });
-
-    await prisma.dnaPrinciple.create({
-      data: {
-         content: "El flujo de caja es la prioridad absoluta en la fase actual.",
-         category: "Finanzas",
-         workspaceId: workspace.id
-      }
-    });
-
-    await prisma.decisionRecord.createMany({
-      data: [
-        {
-          title: "Contratar Lead Developer (Startup B)",
-          context: "Impacto financiero: Alto. Costo de oportunidad evaluado por IA: 15%",
-          workspaceId: workspace.id
-        },
-        {
-          title: "Pausar Campaña B2B Q3",
-          context: "Desviación del objetivo de CAC en 42%.",
-          workspaceId: workspace.id
-        }
-      ]
-    });
-  }
+  if (!workspace) return null;
 
   return { user, workspace };
 }
 
 export async function getEngineData() {
-  // Evitamos fallos si la DB no está sincronizada aún devolviendo mock fallbacks
   try {
-    const { workspace, user } = await ensureActiveContext();
+    const context = await getActiveContext();
+    if (!context) {
+      return null; // Signals the UI to redirect to onboarding
+    }
+
+    const { workspace, user } = context;
+
+    // 1. Ejecutar Executive Loop para mantener la proactividad del sistema
+    const { runExecutiveLoop } = await import('@/lib/executive-loop');
+    await runExecutiveLoop(workspace.id);
 
     const decisions = await prisma.decisionRecord.findMany({
       where: { workspaceId: workspace.id, status: "PENDING_REVIEW" },
@@ -67,14 +40,109 @@ export async function getEngineData() {
       where: { workspaceId: workspace.id }
     });
 
+    const timeline = await prisma.timelineEvent.findMany({
+      where: { workspaceId: workspace.id },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    });
+
+    const queue = await prisma.queueAction.findMany({
+      where: { workspaceId: workspace.id, status: "PENDING" },
+      orderBy: { expectedImpact: 'desc' }
+    });
+
+    const health = await prisma.healthMetric.findMany({
+      where: { workspaceId: workspace.id }
+    });
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const impactScore = await prisma.impactScore.findFirst({
+      where: { workspaceId: workspace.id, date: today }
+    });
+
+    const pendingExecutions = await prisma.toolExecution.findMany({
+      where: { workspaceId: workspace.id, status: "PENDING_APPROVAL" },
+      include: { tool: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
     return {
       user,
       workspace,
       decisions,
-      dna
+      dna,
+      timeline,
+      queue,
+      health,
+      impactScore,
+      pendingExecutions
     };
   } catch (error) {
-    // Si la DB no está inicializada (ej. prisma db push no se ha corrido), devolvemos vacio
-    return { user: { name: 'Emprendedor' }, workspace: { name: 'Offline Mode' }, decisions: [], dna: [] };
+    return { user: { name: 'Emprendedor' }, workspace: { name: 'Offline Mode' }, decisions: [], dna: [], timeline: [], queue: [], health: [], impactScore: null, pendingExecutions: [] };
   }
+}
+
+export async function completeOnboarding(answers: Record<string, string>) {
+  const rawIntro = answers["intro"] || "";
+  const rawGoals = answers["goals"] || "";
+  const rawPrinciples = answers["principles"] || "";
+  const rawProjects = answers["projects"] || "";
+
+  const name = rawIntro.split(' ')[0] || "Emprendedor";
+
+  const user = await prisma.user.create({
+    data: {
+      email: `user_${Date.now()}@hermes.os`,
+      name: name,
+    }
+  });
+
+  const workspace = await prisma.workspace.create({
+    data: {
+      name: "Mission Control",
+      description: answers["industry"] || "Industria Estratégica",
+      userId: user.id,
+    }
+  });
+
+  await prisma.dnaPrinciple.createMany({
+    data: [
+      {
+        content: `Misión Estratégica: ${rawGoals}`,
+        category: "Estrategia",
+        workspaceId: workspace.id
+      },
+      {
+         content: `Principios Rectores: ${rawPrinciples}`,
+         category: "Liderazgo",
+         workspaceId: workspace.id
+      },
+      {
+         content: `Métricas Clave (KPIs): ${answers["kpis"] || ""}`,
+         category: "Operaciones",
+         workspaceId: workspace.id
+      }
+    ]
+  });
+
+  if (rawProjects) {
+    await prisma.decisionRecord.create({
+      data: {
+        title: "Definir viabilidad de proyectos actuales",
+        context: `Proyectos mencionados en onboarding: ${rawProjects}`,
+        workspaceId: workspace.id
+      }
+    });
+  }
+
+  await prisma.timelineEvent.create({
+    data: {
+      eventType: "MILESTONE",
+      description: "Entrevista de Onboarding completada. Executive DNA generado y motor inicializado.",
+      workspaceId: workspace.id
+    }
+  });
+
+  return { success: true };
 }
