@@ -1,38 +1,36 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Building, Package, Wrench, HelpCircle, ShieldAlert, 
-  Tag, Brain, FileText, Share2, Puzzle, Plus, Save, Trash2, Edit2
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Building2, Package, Wrench, HelpCircle, ShieldAlert,
+  Tag, Brain, FileText, Share2, Puzzle, Plus, Save,
+  Trash2, ChevronDown, ChevronRight
+} from 'lucide-react';
 
 const SECTIONS = [
-  { id: 'empresa', label: 'Empresa', icon: Building, type: 'object' },
-  { id: 'productos', label: 'Productos', icon: Package, type: 'array' },
-  { id: 'servicios', label: 'Servicios', icon: Wrench, type: 'array' },
-  { id: 'faqs', label: 'FAQs', icon: HelpCircle, type: 'array' },
-  { id: 'objeciones', label: 'Objeciones', icon: ShieldAlert, type: 'array' },
-  { id: 'promociones', label: 'Promociones', icon: Tag, type: 'array' },
-  { id: 'personalidad', label: 'Personalidad IA', icon: Brain, type: 'object' },
-  { id: 'documentos', label: 'Documentos', icon: FileText, type: 'array' },
-  { id: 'canales', label: 'Canales', icon: Share2, type: 'array' },
-  { id: 'skills', label: 'Skills', icon: Puzzle, type: 'array' },
+  { id: 'empresa',      label: 'Empresa',         icon: Building2,    type: 'object',   description: 'Información general del negocio' },
+  { id: 'productos',    label: 'Productos',        icon: Package,      type: 'array',    description: 'Catálogo de productos' },
+  { id: 'servicios',    label: 'Servicios',        icon: Wrench,       type: 'array',    description: 'Servicios que ofrecemos' },
+  { id: 'precios',      label: 'Precios',          icon: Tag,          type: 'array',    description: 'Lista de precios' },
+  { id: 'objeciones',   label: 'Objeciones',       icon: ShieldAlert,  type: 'array',    description: 'Cómo manejar objeciones' },
+  { id: 'promociones',  label: 'Promociones',      icon: Tag,          type: 'array',    description: 'Ofertas y descuentos activos' },
+  { id: 'faqs',         label: 'FAQs',             icon: HelpCircle,   type: 'array',    description: 'Preguntas frecuentes' },
+  { id: 'personalidad', label: 'Personalidad',     icon: Brain,        type: 'object',   description: 'Tono y estilo de comunicación de la IA' },
+  { id: 'restricciones',label: 'Restricciones',    icon: ShieldAlert,  type: 'array',    description: 'Lo que el agente NO debe hacer' },
+  { id: 'documentos',  label: 'Documentos',        icon: FileText,     type: 'array',    description: 'Archivos y referencias' },
+  { id: 'canales',      label: 'Canales',          icon: Share2,       type: 'array',    description: 'Canales de comunicación' },
+  { id: 'skills',       label: 'Skills',           icon: Puzzle,       type: 'array',    description: 'Capacidades del agente' },
 ];
 
 export function BusinessStudioUI() {
-  const [activeSection, setActiveSection] = useState(SECTIONS[0]);
   const [bundleData, setBundleData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [tenantId] = useState('ferreos'); // MVP tenant
+  const [expandedSection, setExpandedSection] = useState<string | null>('empresa');
+  const [isSaving, setIsSaving] = useState<string | null>(null);
+  const tenantId = 'ferreos';
 
-  useEffect(() => {
-    fetchBundle();
-  }, []);
+  useEffect(() => { fetchBundle(); }, []);
 
   const fetchBundle = async () => {
     try {
@@ -42,238 +40,240 @@ export function BusinessStudioUI() {
       });
       const data = await res.json();
       setBundleData(data);
-    } catch (error) {
-      console.error("Error fetching bundle", error);
+    } catch {
+      setBundleData({});
     } finally {
       setIsLoading(false);
     }
   };
 
   const saveSection = async (sectionId: string, data: any) => {
+    setIsSaving(sectionId);
     try {
-      setIsSaving(true);
-      const res = await fetch(`http://localhost:3000/business-studio/bundle/${sectionId}`, {
+      await fetch(`http://localhost:3000/business-studio/bundle/${sectionId}`, {
         method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-tenant-id': tenantId 
-        },
+        headers: { 'Content-Type': 'application/json', 'x-tenant-id': tenantId },
         body: JSON.stringify(data)
       });
-      const updatedPrompt = await res.json();
-      setBundleData(updatedPrompt);
-    } catch (error) {
-      console.error("Error saving section", error);
+      await fetchBundle();
+    } catch (e) {
+      console.error(e);
     } finally {
-      setIsSaving(false);
+      setIsSaving(null);
     }
   };
 
-  if (isLoading || !bundleData) {
-    return <div className="flex h-full items-center justify-center p-8"><div className="animate-pulse flex items-center gap-2"><Brain className="w-5 h-5 text-primary animate-bounce" /> Cargando Knowledge Bundle...</div></div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-3 text-[#9CA3AF]">
+          <Brain className="w-5 h-5 animate-pulse text-[#4F8CFF]" />
+          <span className="text-sm">Cargando Knowledge Bundle...</span>
+        </div>
+      </div>
+    );
   }
 
-  const currentData = bundleData[activeSection.id] || (activeSection.type === 'array' ? [] : {});
-
   return (
-    <div className="space-y-6">
-      <header className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-light tracking-tight mb-1">Business Studio</h1>
-          <p className="text-muted-foreground text-sm">Centro de configuración del ecosistema. Los cambios se sincronizan en tiempo real con el KOS Loader.</p>
-        </div>
-        <Badge variant="outline" className="border-primary/30 text-primary bg-primary/10">Tenant: {tenantId.toUpperCase()}</Badge>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Sections Sidebar */}
-        <div className="col-span-1 space-y-2">
-          {SECTIONS.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection.id === section.id;
-            return (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border ${
-                  isActive 
-                    ? 'bg-primary/10 text-primary border-primary/30 shadow-sm' 
-                    : 'bg-card/30 text-muted-foreground border-border/50 hover:bg-secondary/50 hover:text-foreground'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'opacity-70'}`} />
-                {section.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Editor Area */}
-        <div className="col-span-1 md:col-span-3">
-          <Card className="bg-card/40 border-border/50 backdrop-blur-sm shadow-xl min-h-[600px] flex flex-col">
-            <CardHeader className="border-b border-border/30 pb-4 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <activeSection.icon className="w-5 h-5 text-primary" />
-                  {activeSection.label}
-                </CardTitle>
-                <CardDescription>
-                  Configura y entrena al agente IA sobre tu {activeSection.label.toLowerCase()}.
-                </CardDescription>
-              </div>
-              <Button onClick={() => fetchBundle()} variant="outline" size="sm" className="h-8">Recargar</Button>
-            </CardHeader>
-            <CardContent className="p-6 flex-1">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeSection.id}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {activeSection.type === 'array' ? (
-                    <ArrayEditor 
-                      sectionId={activeSection.id} 
-                      data={currentData} 
-                      onSave={(newData: any) => saveSection(activeSection.id, newData)}
-                      isSaving={isSaving}
-                    />
-                  ) : (
-                    <ObjectEditor 
-                      sectionId={activeSection.id} 
-                      data={currentData} 
-                      onSave={(newData: any) => saveSection(activeSection.id, newData)}
-                      isSaving={isSaving}
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </CardContent>
-          </Card>
-        </div>
+    <div className="max-w-2xl space-y-2">
+      <div className="mb-8">
+        <p className="text-xs font-semibold text-[#4F8CFF] uppercase tracking-widest mb-2">Business Studio</p>
+        <p className="text-[#9CA3AF] text-sm">
+          Configura el conocimiento de tu agente. Cada cambio se sincroniza con el KOS Loader en tiempo real.
+        </p>
       </div>
+
+      {SECTIONS.map((section) => {
+        const Icon = section.icon;
+        const isOpen = expandedSection === section.id;
+        const currentData = bundleData?.[section.id] ?? (section.type === 'array' ? [] : '');
+
+        return (
+          <div
+            key={section.id}
+            className="rounded-[18px] overflow-hidden transition-all duration-200"
+            style={{
+              background: '#181818',
+              border: `1px solid ${isOpen ? 'rgba(79,140,255,0.2)' : 'rgba(255,255,255,0.06)'}`,
+            }}
+          >
+            {/* Accordion Header */}
+            <button
+              onClick={() => setExpandedSection(isOpen ? null : section.id)}
+              className="w-full flex items-center justify-between px-5 py-4 text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0"
+                  style={{ background: isOpen ? 'rgba(79,140,255,0.15)' : 'rgba(255,255,255,0.04)' }}
+                >
+                  <Icon className={`w-4 h-4 ${isOpen ? 'text-[#4F8CFF]' : 'text-[#9CA3AF]'}`} />
+                </div>
+                <div>
+                  <p className={`text-sm font-medium ${isOpen ? 'text-white' : 'text-[#9CA3AF]'}`}>{section.label}</p>
+                  <p className="text-xs text-[#9CA3AF] mt-0.5">{section.description}</p>
+                </div>
+              </div>
+              <motion.div animate={{ rotate: isOpen ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                <ChevronRight className="w-4 h-4 text-[#9CA3AF]" />
+              </motion.div>
+            </button>
+
+            {/* Accordion Body */}
+            <AnimatePresence>
+              {isOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div
+                    className="px-5 pb-5"
+                    style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                  >
+                    <div className="pt-4">
+                      {section.type === 'array' ? (
+                        <ArrayEditor
+                          data={currentData}
+                          onSave={(d) => saveSection(section.id, d)}
+                          isSaving={isSaving === section.id}
+                        />
+                      ) : (
+                        <ObjectEditor
+                          data={currentData}
+                          onSave={(d) => saveSection(section.id, d)}
+                          isSaving={isSaving === section.id}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-// Generic Array Editor (CRUD for FAQs, Products, etc.)
-function ArrayEditor({ sectionId, data, onSave, isSaving }: any) {
+function ArrayEditor({ data, onSave, isSaving }: { data: any[]; onSave: (d: any) => void; isSaving: boolean }) {
   const [items, setItems] = useState<any[]>(Array.isArray(data) ? data : []);
 
-  const handleAdd = () => {
-    setItems([...items, { id: Date.now().toString(), title: '', content: '' }]);
-  };
-
-  const handleRemove = (index: number) => {
-    const newItems = [...items];
-    newItems.splice(index, 1);
-    setItems(newItems);
-  };
-
-  const handleChange = (index: number, field: string, value: string) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setItems(newItems);
+  const add = () => setItems([...items, { id: Date.now().toString(), title: '', content: '' }]);
+  const remove = (i: number) => setItems(items.filter((_, idx) => idx !== i));
+  const update = (i: number, field: string, val: string) => {
+    const next = [...items];
+    next[i] = { ...next[i], [field]: val };
+    setItems(next);
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Registros ({items.length})</h3>
-        <Button onClick={handleAdd} size="sm" className="gap-2 bg-primary/20 text-primary hover:bg-primary/30 border border-primary/20"><Plus className="w-4 h-4" /> Agregar Nuevo</Button>
-      </div>
-      
-      <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-        {items.length === 0 ? (
-          <div className="text-center p-8 border border-dashed border-border/50 rounded-xl text-muted-foreground">
-            No hay registros configurados en esta sección.
-          </div>
-        ) : (
-          items.map((item, idx) => (
-            <div key={item.id || idx} className="p-4 border border-border/50 rounded-xl bg-card/50 relative group">
-              <button 
-                onClick={() => handleRemove(idx)}
-                className="absolute top-4 right-4 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-              <div className="space-y-3 pr-8">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Título / Identificador</label>
-                  <input 
-                    type="text" 
-                    value={item.title || ''} 
-                    onChange={(e) => handleChange(idx, 'title', e.target.value)}
-                    className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-                    placeholder="Ej. Precio de envío"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Contenido / Detalles</label>
-                  <textarea 
-                    value={item.content || ''} 
-                    onChange={(e) => handleChange(idx, 'content', e.target.value)}
-                    className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:border-primary/50"
-                    placeholder="Ej. El envío es gratuito para compras mayores a $5000."
-                  />
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+    <div className="space-y-3">
+      {items.length === 0 ? (
+        <div
+          className="py-8 text-center rounded-[14px] text-sm text-[#9CA3AF]"
+          style={{ border: '1px dashed rgba(255,255,255,0.08)' }}
+        >
+          Sin registros. Agrega el primero.
+        </div>
+      ) : (
+        items.map((item, i) => (
+          <motion.div
+            key={item.id || i}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="group relative rounded-[14px] p-4 space-y-3"
+            style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <button
+              onClick={() => remove(i)}
+              className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-[#9CA3AF] hover:text-[#EF4444]"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+            <input
+              value={item.title || ''}
+              onChange={(e) => update(i, 'title', e.target.value)}
+              placeholder="Título"
+              className="w-full bg-transparent text-sm text-white placeholder:text-[#9CA3AF] outline-none border-b pb-2"
+              style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+            />
+            <textarea
+              value={item.content || ''}
+              onChange={(e) => update(i, 'content', e.target.value)}
+              placeholder="Contenido o descripción..."
+              rows={2}
+              className="w-full bg-transparent text-sm text-[#9CA3AF] placeholder:text-[#9CA3AF] outline-none resize-none"
+            />
+          </motion.div>
+        ))
+      )}
 
-      <div className="pt-4 border-t border-border/30 flex justify-end">
-        <Button onClick={() => onSave(items)} disabled={isSaving} className="gap-2">
-          {isSaving ? <span className="animate-spin text-lg">⚙</span> : <Save className="w-4 h-4" />}
-          Guardar Cambios
-        </Button>
+      <div className="flex items-center justify-between pt-2">
+        <button
+          onClick={add}
+          className="flex items-center gap-2 text-xs text-[#4F8CFF] hover:text-white transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Agregar
+        </button>
+        <SaveButton onClick={() => onSave(items)} loading={isSaving} />
       </div>
     </div>
   );
 }
 
-// Generic Object Editor (CRUD for Empresa, Personalidad, etc.)
-function ObjectEditor({ sectionId, data, onSave, isSaving }: any) {
-  const [content, setContent] = useState<string>(
+function ObjectEditor({ data, onSave, isSaving }: { data: any; onSave: (d: any) => void; isSaving: boolean }) {
+  const [content, setContent] = useState(
     typeof data === 'string' ? data : JSON.stringify(data, null, 2)
   );
 
   return (
-    <div className="space-y-4 flex flex-col h-full">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Configuración General</h3>
-      </div>
-      
-      <div className="flex-1">
-        <label className="text-xs font-medium text-muted-foreground mb-1 block">Contexto del negocio (Instrucciones base)</label>
-        <textarea 
-          value={content} 
-          onChange={(e) => setContent(e.target.value)}
-          className="w-full h-[400px] bg-background border border-border/50 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-primary/50 font-mono"
-          placeholder={`Describe la ${sectionId}...`}
-        />
-      </div>
-
-      <div className="pt-4 border-t border-border/30 flex justify-end">
-        <Button 
-          onClick={() => {
-            try {
-              const parsed = JSON.parse(content);
-              onSave(parsed);
-            } catch (e) {
-              // If it's not valid JSON, save as plain string
-              onSave(content);
-            }
-          }} 
-          disabled={isSaving} 
-          className="gap-2"
-        >
-          {isSaving ? <span className="animate-spin text-lg">⚙</span> : <Save className="w-4 h-4" />}
-          Guardar Cambios
-        </Button>
+    <div className="space-y-3">
+      <textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        rows={6}
+        className="w-full text-sm text-[#9CA3AF] outline-none resize-none rounded-[14px] p-4"
+        style={{
+          background: '#111111',
+          border: '1px solid rgba(255,255,255,0.06)',
+          fontFamily: 'var(--font-geist-mono)',
+        }}
+        placeholder="Describe esta sección o pega un JSON..."
+      />
+      <div className="flex justify-end">
+        <SaveButton onClick={() => {
+          try { onSave(JSON.parse(content)); }
+          catch { onSave(content); }
+        }} loading={isSaving} />
       </div>
     </div>
+  );
+}
+
+function SaveButton({ onClick, loading }: { onClick: () => void; loading: boolean }) {
+  return (
+    <motion.button
+      onClick={onClick}
+      disabled={loading}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+      className="flex items-center gap-2 text-xs font-medium px-4 py-2 rounded-[10px] text-white transition-all"
+      style={{
+        background: loading ? 'rgba(79,140,255,0.4)' : '#4F8CFF',
+        boxShadow: '0 4px 14px rgba(79,140,255,0.25)',
+      }}
+    >
+      {loading ? (
+        <span className="animate-spin">⊙</span>
+      ) : (
+        <Save className="w-3.5 h-3.5" />
+      )}
+      Guardar
+    </motion.button>
   );
 }

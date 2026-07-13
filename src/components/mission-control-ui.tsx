@@ -1,240 +1,349 @@
 "use client"
 
 import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  Home, MessageSquare, Users, BrainCircuit, Puzzle, Bot, 
-  Database, GitMerge, Zap, BarChart, Plug, Store, Settings,
-  Activity, CheckCircle2, AlertTriangle, TrendingUp, DollarSign,
-  Smartphone, Server, Network, Building
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  LayoutDashboard, MessageSquare, Users, Building2, BookOpen,
+  BrainCircuit, Puzzle, Bot, GitMerge, Zap, BarChart3,
+  Plug, ShoppingBag, Settings, ChevronRight, Sparkles, Send, X
+} from 'lucide-react';
+import { BusinessStudioUI } from './business-studio-ui';
 
-import { BusinessStudioUI } from "./business-studio-ui";
-
-const SIDEBAR_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'conversaciones', label: 'Conversaciones', icon: MessageSquare },
-  { id: 'leads', label: 'Leads', icon: Users },
-  { id: 'business-studio', label: 'Business Studio', icon: Building },
+const NAV = [
+  { id: 'dashboard', label: 'Mission Control', icon: LayoutDashboard },
+  { id: 'conversations', label: 'Conversation Hub', icon: MessageSquare },
+  { id: 'crm', label: 'CRM', icon: Users },
+  { id: 'studio', label: 'Business Studio', icon: Building2 },
+  { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
+  { id: 'memory', label: 'Memory', icon: BrainCircuit },
   { id: 'skills', label: 'Skills', icon: Puzzle },
-  { id: 'agentes', label: 'Agentes', icon: Bot },
-  { id: 'memory', label: 'Memory Center', icon: Database },
+  { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'funnels', label: 'Funnels', icon: GitMerge },
-  { id: 'automatizaciones', label: 'Automatizaciones', icon: Zap },
-  { id: 'analytics', label: 'Analytics', icon: BarChart },
-  { id: 'integraciones', label: 'Integraciones', icon: Plug },
-  { id: 'marketplace', label: 'Marketplace', icon: Store },
-  { id: 'configuracion', label: 'Configuración', icon: Settings },
+  { id: 'automation', label: 'Automation', icon: Zap },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag },
+  { id: 'integrations', label: 'Integrations', icon: Plug },
+  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 export function MissionControlUI() {
-  const [activeTab, setActiveTab] = useState('business-studio');
+  const [active, setActive] = useState('dashboard');
+  const [hermesOpen, setHermesOpen] = useState(false);
+  const [hermesInput, setHermesInput] = useState('');
+
+  const handleHermesSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hermesInput.trim()) return;
+    // Future: emit to backend AI command processor
+    setHermesInput('');
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground font-sans">
-      {/* Sidebar - Inspired by Linear / Stripe */}
-      <aside className="w-64 border-r border-border/50 bg-card/30 flex flex-col justify-between backdrop-blur-sm">
-        <div className="flex flex-col h-full">
-          {/* Logo Area */}
-          <div className="h-16 flex items-center px-6 border-b border-border/50">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center mr-3 shadow-[0_0_15px_rgba(var(--primary),0.3)]">
-              <BrainCircuit className="w-4 h-4 text-primary" />
-            </div>
-            <span className="font-semibold text-lg tracking-tight">Ingenio AI</span>
-            <Badge variant="outline" className="ml-auto text-[9px] uppercase tracking-widest border-primary/30 text-primary bg-primary/10">CORE</Badge>
-          </div>
+    <div className="flex h-screen w-screen overflow-hidden" style={{ background: '#090909' }}>
 
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
-            {SIDEBAR_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-primary/10 text-primary shadow-[inset_2px_0_0_0_rgba(var(--primary),1)]' 
-                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'opacity-70'}`} />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* User Profile Footer */}
-          <div className="p-4 border-t border-border/50">
-            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors border border-transparent hover:border-border/50">
-              <Avatar className="w-9 h-9 border border-border/50">
-                <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">FOS</AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium leading-none mb-1">FerreOS</span>
-                <span className="text-xs text-muted-foreground">Plan Premium</span>
-              </div>
+      {/* ─── Sidebar ─────────────────────────────────── */}
+      <aside
+        className="flex flex-col w-[220px] flex-shrink-0 h-full border-r py-6"
+        style={{
+          background: '#111111',
+          borderColor: 'rgba(255,255,255,0.06)'
+        }}
+      >
+        {/* Brand */}
+        <div className="px-5 mb-8">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #4F8CFF 0%, #6d58ff 100%)' }}
+            >
+              <Sparkles className="w-4 h-4 text-white" />
             </div>
+            <span className="text-sm font-semibold tracking-tight text-white">Ingenio OS</span>
           </div>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            const isActive = active === item.id;
+            return (
+              <motion.button
+                key={item.id}
+                onClick={() => setActive(item.id)}
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
+                className={`
+                  w-full flex items-center gap-3 px-3 py-2.5 rounded-[14px] text-sm transition-all duration-150
+                  ${isActive
+                    ? 'text-white sidebar-active'
+                    : 'text-[#9CA3AF] hover:text-white'
+                  }
+                `}
+                style={{
+                  background: isActive ? 'rgba(79,140,255,0.1)' : 'transparent',
+                }}
+              >
+                <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[#4F8CFF]' : ''}`} />
+                <span className="font-medium">{item.label}</span>
+                {isActive && (
+                  <ChevronRight className="w-3 h-3 ml-auto text-[#4F8CFF] opacity-60" />
+                )}
+              </motion.button>
+            );
+          })}
+        </nav>
+
+        {/* Hermes mini button */}
+        <div className="px-3 pt-4 border-t mt-4" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+          <motion.button
+            onClick={() => setHermesOpen(true)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-[14px] text-sm text-[#9CA3AF] hover:text-white transition-all duration-150"
+            style={{ background: 'rgba(79,140,255,0.07)', border: '1px solid rgba(79,140,255,0.15)' }}
+          >
+            <Sparkles className="w-4 h-4 text-[#4F8CFF]" />
+            <span>Ask Hermes...</span>
+          </motion.button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto bg-background/50 relative">
-        {/* Subtle gradient background effect */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-background to-background pointer-events-none" />
-        
-        <div className="p-8 max-w-7xl mx-auto relative z-10">
+      {/* ─── Main Content ─────────────────────────────── */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Top bar */}
+        <div
+          className="flex items-center justify-between px-8 py-4 border-b flex-shrink-0"
+          style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(17,17,17,0.6)', backdropFilter: 'blur(12px)' }}
+        >
+          <div>
+            <h1 className="text-base font-semibold text-white">
+              {NAV.find(n => n.id === active)?.label}
+            </h1>
+            <p className="text-xs text-[#9CA3AF] mt-0.5">Ingenio AI Platform · FerreOS</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs text-[#22C55E]">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22C55E] opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#22C55E]" />
+              </span>
+              Sistema operativo
+            </div>
+          </div>
+        </div>
+
+        {/* Page */}
+        <div className="flex-1 overflow-y-auto p-8">
           <AnimatePresence mode="wait">
             <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
+              key={active}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              {activeTab === 'dashboard' && <DashboardView />}
-              {activeTab === 'business-studio' && <BusinessStudioUI />}
-              {activeTab !== 'dashboard' && activeTab !== 'business-studio' && (
-                <div className="flex flex-col items-center justify-center h-[60vh] border border-dashed border-border/50 rounded-2xl bg-card/20">
-                  <h2 className="text-2xl font-light text-muted-foreground mb-2">Sección en construcción</h2>
-                  <p className="text-sm text-muted-foreground/70">Módulo: {activeTab}</p>
-                </div>
+              {active === 'dashboard' && <DashboardView />}
+              {active === 'studio' && <BusinessStudioUI />}
+              {active !== 'dashboard' && active !== 'studio' && (
+                <ComingSoon label={NAV.find(n => n.id === active)?.label || ''} />
               )}
             </motion.div>
           </AnimatePresence>
         </div>
       </main>
-    </div>
-  );
-}
 
-function DashboardView() {
-  return (
-    <div className="space-y-8">
-      <header className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-light tracking-tight mb-1">Mission Control</h1>
-          <p className="text-muted-foreground text-sm">Monitoreo en tiempo real del ecosistema Ingenio AI.</p>
-        </div>
-        <div className="flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded-full bg-green-500/10 text-green-500 border border-green-500/20">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          SYSTEM ONLINE
-        </div>
-      </header>
-
-      {/* Primary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Conversaciones Activas" value="142" trend="+12%" icon={MessageSquare} />
-        <MetricCard title="Agentes Funcionando" value="5" icon={Bot} />
-        <MetricCard title="Skills Ejecutadas" value="1,204" trend="+43%" icon={Puzzle} />
-        <MetricCard title="Estado del Loop" value="HEALTHY" icon={Activity} highlight="text-green-500" />
-      </div>
-
-      {/* Commercial Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Leads Nuevos (Hoy)" value="28" trend="+5%" icon={Users} />
-        <MetricCard title="Tasa de Conversión" value="8.4%" trend="+1.2%" icon={TrendingUp} />
-        <MetricCard title="Ventas Cerradas" value="$4,250" trend="+18%" icon={DollarSign} />
-        <MetricCard title="Alertas IA" value="0" icon={AlertTriangle} highlight="text-muted-foreground" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* System Health Status */}
-        <Card className="col-span-1 bg-card/40 border-border/50 backdrop-blur-sm shadow-xl">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Server className="w-4 h-4 text-primary" /> System Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <StatusRow label="WhatsApp Gateway" status="Operational" />
-            <StatusRow label="Hermes LLM" status="Operational" />
-            <StatusRow label="KOS Loader" status="Operational" />
-            <StatusRow label="CRM Sync" status="Operational" />
-            <StatusRow label="Skill Engine" status="Operational" />
-          </CardContent>
-        </Card>
-
-        {/* AI Consumption Metrics */}
-        <Card className="col-span-2 bg-card/40 border-border/50 backdrop-blur-sm shadow-xl">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" /> Uso de Inteligencia Artificial
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Tokens Procesados (Este mes)</p>
-                <p className="text-3xl font-light font-mono">1.24M</p>
-                <div className="w-full bg-secondary rounded-full h-1.5 mt-2">
-                  <div className="bg-primary h-1.5 rounded-full w-[45%]" />
+      {/* ─── Hermes Floating Panel ────────────────────── */}
+      <AnimatePresence>
+        {hermesOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40"
+              style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+              onClick={() => setHermesOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="fixed bottom-8 right-8 z-50 w-[440px] rounded-[24px] overflow-hidden"
+              style={{
+                background: '#181818',
+                border: '1px solid rgba(79,140,255,0.2)',
+                boxShadow: '0 32px 80px rgba(0,0,0,0.8), 0 0 40px rgba(79,140,255,0.08)'
+              }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #4F8CFF 0%, #6d58ff 100%)' }}>
+                    <Sparkles className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-white">Hermes</div>
+                    <div className="text-xs text-[#9CA3AF]">Tu asistente de plataforma</div>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground text-right mt-1">45% del plan</p>
+                <button onClick={() => setHermesOpen(false)} className="text-[#9CA3AF] hover:text-white transition-colors p-1">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Costos IA Generados</p>
-                <p className="text-3xl font-light font-mono">$18.42</p>
-                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-green-500" />
-                  Dentro del margen operativo esperado
-                </p>
+
+              {/* Chat area */}
+              <div className="px-5 py-5">
+                <div className="rounded-[16px] p-4 mb-4 text-sm text-[#9CA3AF]" style={{ background: '#111111' }}>
+                  <p className="text-white font-medium mb-2">¿Qué quieres hacer?</p>
+                  <p className="text-xs leading-relaxed">Puedo modificar tu Business Studio, crear Funnels, consultar datos de conversaciones o configurar el sistema. Solo dime qué necesitas.</p>
+                </div>
+
+                <form onSubmit={handleHermesSubmit} className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={hermesInput}
+                    onChange={(e) => setHermesInput(e.target.value)}
+                    placeholder="Ej: Agrega un nuevo producto..."
+                    autoFocus
+                    className="flex-1 bg-transparent text-sm text-white placeholder:text-[#9CA3AF] outline-none"
+                    style={{
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '14px',
+                      padding: '10px 14px',
+                      background: '#111111',
+                    }}
+                  />
+                  <motion.button
+                    type="submit"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                    style={{ background: '#4F8CFF' }}
+                  >
+                    <Send className="w-4 h-4 text-white" />
+                  </motion.button>
+                </form>
               </div>
-            </div>
-            
-            <div className="mt-8 p-4 rounded-lg bg-secondary/30 border border-secondary flex items-center gap-4">
-               <Network className="w-8 h-8 text-primary opacity-80" />
-               <div>
-                 <h4 className="text-sm font-medium">Executive Loop Multi-Tenant</h4>
-                 <p className="text-xs text-muted-foreground mt-1">El KOS Loader está alimentando dinámicamente el prompt del sistema. 5 agentes activos en 3 tenants distintos.</p>
-               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+
+              {/* Quick actions */}
+              <div className="px-5 pb-5 flex flex-wrap gap-2">
+                {[
+                  'Resumen del día',
+                  'Crear embudo',
+                  'Agregar producto',
+                  'Ver conversaciones',
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => setHermesInput(suggestion)}
+                    className="text-xs px-3 py-1.5 rounded-full text-[#9CA3AF] hover:text-white transition-colors"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function MetricCard({ title, value, trend, icon: Icon, highlight }: any) {
+/* ─── Dashboard View ──────────────────────────────────── */
+function DashboardView() {
+  const summary = {
+    headline: "Hoy hubo un aumento del 32% en oportunidades de venta.",
+    alerts: [
+      "Dos conversaciones requieren atención inmediata.",
+      "Un cliente está listo para comprar — score 94/100.",
+    ],
+    services: [
+      { name: 'WAHA', status: 'online', latency: '24ms', detail: 'Conectado' },
+      { name: 'Hermes', status: 'online', latency: '112ms', detail: 'Procesando' },
+      { name: 'Executive Loop', status: 'online', latency: '—', detail: 'Activo' },
+      { name: 'Skill Engine', status: 'online', latency: '—', detail: 'En espera' },
+      { name: 'PostgreSQL', status: 'online', latency: '8ms', detail: 'Conectado' },
+      { name: 'OpenAI', status: 'online', latency: '340ms', detail: 'GPT-4o' },
+    ]
+  };
+
   return (
-    <Card className="bg-card/40 border-border/50 hover:border-primary/30 transition-colors shadow-sm">
-      <CardContent className="p-5">
-        <div className="flex justify-between items-start mb-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
-          <div className="p-1.5 rounded-md bg-secondary/50 text-muted-foreground">
-            <Icon className="w-4 h-4" />
+    <div className="space-y-8 max-w-5xl">
+      {/* Executive Summary */}
+      <div>
+        <p className="text-xs font-semibold text-[#4F8CFF] uppercase tracking-widest mb-4">Executive Summary</p>
+        <div
+          className="rounded-[20px] p-6"
+          style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <p className="text-xl font-light text-white leading-relaxed mb-5">
+            {summary.headline}
+          </p>
+          <div className="space-y-3">
+            {summary.alerts.map((alert, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.08 }}
+                className="flex items-start gap-3"
+              >
+                <div className="w-1 h-1 rounded-full bg-[#4F8CFF] mt-2 flex-shrink-0" />
+                <p className="text-sm text-[#9CA3AF] leading-relaxed">{alert}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
-        <div className="flex items-baseline gap-2">
-          <h3 className={`text-2xl font-semibold tracking-tight ${highlight || 'text-foreground'}`}>{value}</h3>
-          {trend && (
-            <span className={`text-xs font-medium ${trend.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
-              {trend}
-            </span>
-          )}
+      </div>
+
+      {/* System Status */}
+      <div>
+        <p className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest mb-4">System Status</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {summary.services.map((svc, i) => (
+            <motion.div
+              key={svc.name}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="rounded-[18px] p-4 card-hover"
+              style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wider">{svc.name}</span>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22C55E] opacity-50" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22C55E]" />
+                </span>
+              </div>
+              <p className="text-white text-sm font-medium">{svc.detail}</p>
+              {svc.latency !== '—' && (
+                <p className="text-[#9CA3AF] text-xs mt-1">Latencia {svc.latency}</p>
+              )}
+            </motion.div>
+          ))}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
-function StatusRow({ label, status }: any) {
-  const isOk = status === 'Operational';
+/* ─── Coming Soon placeholder ─────────────────────────── */
+function ComingSoon({ label }: { label: string }) {
   return (
-    <div className="flex justify-between items-center py-2 border-b border-border/30 last:border-0">
-      <span className="text-sm">{label}</span>
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground font-mono">{status}</span>
-        <div className={`w-2 h-2 rounded-full ${isOk ? 'bg-green-500' : 'bg-red-500'}`} />
+    <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
+      <div
+        className="w-16 h-16 rounded-[20px] flex items-center justify-center mb-6"
+        style={{ background: 'rgba(79,140,255,0.08)', border: '1px solid rgba(79,140,255,0.15)' }}
+      >
+        <Sparkles className="w-7 h-7 text-[#4F8CFF]" />
       </div>
+      <h2 className="text-2xl font-light text-white mb-2">{label}</h2>
+      <p className="text-sm text-[#9CA3AF]">Este módulo estará disponible pronto.</p>
     </div>
   );
 }
