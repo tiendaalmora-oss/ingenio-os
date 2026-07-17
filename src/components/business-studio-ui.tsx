@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Building2, Package, Wrench, HelpCircle, ShieldAlert,
-  Tag, Brain, FileText, Share2, Puzzle, Plus, Save,
-  Trash2, ChevronDown, ChevronRight
+  Save, Plus, Trash2, Edit3, Check, X, Building2, Store, Package, Users, Settings, Tag, MessageCircle, AlertTriangle, Info, Bot, RefreshCw,
+  Wrench, HelpCircle, ShieldAlert, Brain, FileText, Share2, Puzzle, ChevronRight
 } from 'lucide-react';
+import { useTenant } from '@/context/TenantContext';
 
 const SECTIONS = [
   { id: 'empresa',      label: 'Empresa',         icon: Building2,    type: 'object',   description: 'Información general del negocio' },
@@ -28,7 +28,7 @@ export function BusinessStudioUI() {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedSection, setExpandedSection] = useState<string | null>('empresa');
   const [isSaving, setIsSaving] = useState<string | null>(null);
-  const tenantId = 'ferreos';
+  const { tenantId } = useTenant();
 
   useEffect(() => { fetchBundle(); }, []);
 

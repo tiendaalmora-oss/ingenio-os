@@ -8,6 +8,9 @@ import {
   Plug, ShoppingBag, Settings, ChevronRight, Sparkles, Send, X
 } from 'lucide-react';
 import { BusinessStudioUI } from './business-studio-ui';
+import { ConversationHubUI } from './conversation-hub-ui';
+import { CrmUI } from './crm-ui';
+import { MemoryCenterUI } from './memory-center-ui';
 
 const NAV = [
   { id: 'dashboard', label: 'Mission Control', icon: LayoutDashboard },
@@ -144,8 +147,12 @@ export function MissionControlUI() {
               transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
               {active === 'dashboard' && <DashboardView />}
+              {active === 'conversations' && <ConversationHubUI />}
+              {active === 'crm' && <CrmUI />}
               {active === 'studio' && <BusinessStudioUI />}
-              {active !== 'dashboard' && active !== 'studio' && (
+              {active === 'funnels' && <FunnelEditorUI />}
+              {active === 'memory' && <MemoryCenterUI />}
+              {active !== 'dashboard' && active !== 'conversations' && active !== 'crm' && active !== 'studio' && active !== 'funnels' && active !== 'memory' && (
                 <ComingSoon label={NAV.find(n => n.id === active)?.label || ''} />
               )}
             </motion.div>
@@ -253,82 +260,107 @@ export function MissionControlUI() {
   );
 }
 
+import { FunnelEditorUI } from './funnel-editor/funnel-editor-ui';
+
 /* ─── Dashboard View ──────────────────────────────────── */
 function DashboardView() {
-  const summary = {
-    headline: "Hoy hubo un aumento del 32% en oportunidades de venta.",
-    alerts: [
-      "Dos conversaciones requieren atención inmediata.",
-      "Un cliente está listo para comprar — score 94/100.",
-    ],
-    services: [
-      { name: 'WAHA', status: 'online', latency: '24ms', detail: 'Conectado' },
-      { name: 'Hermes', status: 'online', latency: '112ms', detail: 'Procesando' },
-      { name: 'Executive Loop', status: 'online', latency: '—', detail: 'Activo' },
-      { name: 'Skill Engine', status: 'online', latency: '—', detail: 'En espera' },
-      { name: 'PostgreSQL', status: 'online', latency: '8ms', detail: 'Conectado' },
-      { name: 'OpenAI', status: 'online', latency: '340ms', detail: 'GPT-4o' },
-    ]
-  };
+  const [summary, setSummary] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const fetchData = () => {
+      fetch('http://localhost:3000/health/system-status')
+        .then(r => r.json())
+        .then(data => setSummary(data))
+        .catch(e => console.error('Error fetching dashboard data:', e));
+    };
+    
+    // Initial fetch
+    fetchData();
+    
+    // Poll every 5 seconds for real-time updates
+    const intervalId = setInterval(fetchData, 5000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  if (!summary) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <span className="relative flex h-3 w-3">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4F8CFF] opacity-75" />
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-[#4F8CFF]" />
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8 max-w-5xl">
-      {/* Executive Summary */}
+    <div className="space-y-8 max-w-6xl">
+      {/* Metrics Grid */}
       <div>
-        <p className="text-xs font-semibold text-[#4F8CFF] uppercase tracking-widest mb-4">Executive Summary</p>
-        <div
-          className="rounded-[20px] p-6"
-          style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <p className="text-xl font-light text-white leading-relaxed mb-5">
-            {summary.headline}
-          </p>
-          <div className="space-y-3">
-            {summary.alerts.map((alert, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.08 }}
-                className="flex items-start gap-3"
-              >
-                <div className="w-1 h-1 rounded-full bg-[#4F8CFF] mt-2 flex-shrink-0" />
-                <p className="text-sm text-[#9CA3AF] leading-relaxed">{alert}</p>
-              </motion.div>
-            ))}
-          </div>
+        <p className="text-xs font-semibold text-[#4F8CFF] uppercase tracking-widest mb-4">Métricas Principales</p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Widget title="Conversaciones" value={summary.metrics.conversations} icon={MessageSquare} />
+          <Widget title="Leads CRM" value={summary.metrics.leads} icon={Users} />
+          <Widget title="Knowledge Bundles" value={summary.metrics.knowledgeBundles} icon={BookOpen} />
+          <Widget title="Automatizaciones" value={summary.metrics.automations} icon={Zap} />
+          <Widget title="Skills Ejecutadas" value={summary.metrics.skillsExecuted} icon={Puzzle} />
         </div>
       </div>
 
       {/* System Status */}
       <div>
-        <p className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest mb-4">System Status</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {summary.services.map((svc, i) => (
+        <p className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest mb-4">Estado de los Servicios</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {summary.services.map((svc: any, i: number) => (
             <motion.div
               key={svc.name}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="rounded-[18px] p-4 card-hover"
+              className="rounded-[18px] p-5 card-hover flex flex-col justify-between h-28"
               style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)' }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wider">{svc.name}</span>
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22C55E] opacity-50" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22C55E]" />
-                </span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-[#9CA3AF] tracking-wider">{svc.name}</span>
+                {svc.status === 'online' ? (
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22C55E] opacity-50" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#22C55E]" />
+                  </span>
+                ) : (
+                  <span className="relative flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                )}
               </div>
-              <p className="text-white text-sm font-medium">{svc.detail}</p>
-              {svc.latency !== '—' && (
-                <p className="text-[#9CA3AF] text-xs mt-1">Latencia {svc.latency}</p>
-              )}
+              <div>
+                <p className="text-white text-base font-medium">{svc.detail}</p>
+                {svc.latency && (
+                  <p className="text-[#9CA3AF] text-xs mt-1">Latencia: {svc.latency}</p>
+                )}
+              </div>
             </motion.div>
           ))}
         </div>
       </div>
     </div>
+  );
+}
+
+function Widget({ title, value, icon: Icon }: { title: string, value: number, icon: any }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="rounded-[20px] p-5 flex flex-col justify-between"
+      style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)' }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <Icon className="w-5 h-5 text-[#4F8CFF]" />
+      </div>
+      <div>
+        <p className="text-3xl font-light text-white mb-1">{value}</p>
+        <p className="text-xs text-[#9CA3AF] uppercase tracking-wider font-medium">{title}</p>
+      </div>
+    </motion.div>
   );
 }
 
