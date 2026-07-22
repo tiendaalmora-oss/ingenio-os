@@ -214,7 +214,23 @@ export default function LandingBuilderPage() {
       setUploadedImages(prev => [...prev, publicUrl]);
       setActiveBank('images');
       setMessage({ type: 'success', text: `✅ Imagen subida a la nube y URL copiada al portapapeles` });
-      setTimeout(() => setMessage(null), 4000);
+
+      // 4. Confirmar subida: reemplaza URLs viejas en todas las landings del slug automáticamente
+      fetch("/api/images/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          originalFilename: file.name,
+          publicUrl: publicUrl,
+          slug: slug.trim() !== "" ? slug.trim() : "manual_uploads",
+        }),
+      }).then(r => r.json()).then(d => {
+        if (d.updatedVariants > 0) {
+          setMessage({ type: 'success', text: `✅ Imagen subida. ${d.updatedVariants} landing(s) actualizadas automáticamente.` });
+        }
+      }).catch(() => {});
+
+      setTimeout(() => setMessage(null), 5000);
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : String(err) });
     } finally {
