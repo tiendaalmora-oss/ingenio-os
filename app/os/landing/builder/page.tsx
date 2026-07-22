@@ -117,32 +117,42 @@ export default function LandingBuilderPage() {
     }
   }, [activeBank, slug]);
 
-  // Iframe Click-to-Edit Listener
+  // Iframe Click-to-Edit: salta a la línea exacta usando data-srcline inyectado en el preview
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'ELEMENT_CLICKED' && event.data?.snippet) {
-        const snippet = event.data.snippet;
-        const textarea = textareaRef.current;
-        if (!textarea) return;
+      if (event.data?.type !== 'JUMP_TO_LINE') return;
+      const textarea = textareaRef.current;
+      if (!textarea) return;
 
-        const val = textarea.value;
-        const index = val.indexOf(snippet);
-        
-        if (index !== -1) {
-          textarea.focus();
-          textarea.setSelectionRange(index, index + snippet.length);
-          const lines = val.substring(0, index).split('\n');
-          const lineHeight = 20;
-          textarea.scrollTop = Math.max(0, (lines.length - 3) * lineHeight);
-          setMessage({ type: 'success', text: `Elemento <${event.data.tagName}> seleccionado en el código.` });
-          setTimeout(() => setMessage(null), 2000);
-        }
+      const lineNum = (event.data.line as number) - 1; // convertir a 0-indexed
+      const lines = textarea.value.split('\n');
+
+      if (lineNum < 0 || lineNum >= lines.length) return;
+
+      // Calcular posición de carácter exacta de la línea
+      let charPos = 0;
+      for (let i = 0; i < lineNum; i++) {
+        charPos += lines[i].length + 1; // +1 por el \n
       }
+      const lineContent = lines[lineNum];
+
+      textarea.focus();
+      textarea.setSelectionRange(charPos, charPos + lineContent.length);
+
+      // Scroll centrado en la línea (mostrar ~5 líneas de contexto arriba)
+      const lineHeight = 20;
+      textarea.scrollTop = Math.max(0, (lineNum - 5) * lineHeight);
+
+      setMessage({
+        type: 'success',
+        text: `📍 Línea ${lineNum + 1} — <${event.data.tagName}> seleccionado`,
+      });
+      setTimeout(() => setMessage(null), 2500);
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [code]);
 
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
@@ -367,26 +377,55 @@ export default function LandingBuilderPage() {
     }
   };
 
-  // Iframe injection script to intercept clicks
-  const iframeHtml = code + `
+  // Inyecta data-srcline en cada tag del preview para poder saltar a la línea exacta al hacer clic
+  const addSourceLines = (html: string): string => {
+    const lines = html.split('\n');
+    return lines.map((line, idx) =>
+      line.replace(/<([a-zA-Z][a-zA-Z0-9-]*)([\s/>])/g, (match, tag, after) => {
+        // No tocar tags especiales que no son elementos visuales
+        if (['script', 'style', 'meta', 'link', 'head', 'title'].includes(tag.toLowerCase())) return match;
+        return `<${tag} data-srcline="${idx + 1}"${after}`;
+      })
+    ).join('\n');
+  };
+
+  // Preview HTML: código con líneas marcadas + CSS de hover + script de click preciso
+  const iframeHtml = addSourceLines(code) + `
+<style>
+  /* Resaltar elemento al hacer hover en el preview */
+  [data-srcline] { cursor: crosshair !important; }
+  [data-srcline]:hover {
+    outline: 2px solid rgba(6, 182, 212, 0.7) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.15) !important;
+  }
+  [data-srcline]:active {
+    outline: 2px solid rgba(6, 182, 212, 1) !important;
+  }
+</style>
 <script>
   document.addEventListener("click", function(e) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     let target = e.target;
-    if (target.tagName.toLowerCase() === 'html' || target.tagName.toLowerCase() === 'body') return;
+    if (!target || ['html', 'body'].includes(target.tagName?.toLowerCase())) return;
 
-    let clone = target.cloneNode(false);
-    let snippet = clone.outerHTML.replace('></' + target.tagName.toLowerCase() + '>', '>');
-    
-    if (snippet.length > 100) snippet = snippet.substring(0, 100);
+    // Buscar data-srcline en el elemento o en sus ancestros
+    let srcLine = target.getAttribute('data-srcline');
+    let el = target;
+    while (!srcLine && el.parentElement) {
+      el = el.parentElement;
+      srcLine = el.getAttribute('data-srcline');
+    }
 
-    window.parent.postMessage({ 
-      type: 'ELEMENT_CLICKED', 
-      snippet: snippet,
-      tagName: target.tagName.toLowerCase()
-    }, "*");
+    if (srcLine) {
+      window.parent.postMessage({
+        type: 'JUMP_TO_LINE',
+        line: parseInt(srcLine),
+        tagName: target.tagName.toLowerCase(),
+      }, "*");
+    }
   }, true);
 </script>
 `;
