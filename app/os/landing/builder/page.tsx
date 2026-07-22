@@ -171,26 +171,50 @@ export default function LandingBuilderPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
-    setMessage(null);
+    // Validación de tamaño en el cliente (50 MB)
+    if (file.size > 50 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'La imagen supera el límite de 50 MB.' });
+      return;
+    }
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("slug", slug.trim() !== "" ? slug.trim() : "manual_uploads");
-    formData.append("folder", "images");
+    setIsUploading(true);
+    setMessage({ type: 'success', text: `Preparando carga segura a la nube para "${file.name}"...` });
 
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
+      // 1. Pedir URL firmada de Supabase
+      const presignRes = await fetch("/api/images/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          slug: slug.trim() !== "" ? slug.trim() : "manual_uploads",
+        }),
+      });
+      const presignData = await presignRes.json();
 
-      if (data.success) {
-        navigator.clipboard.writeText(data.url);
-        setUploadedImages(prev => [...prev, data.url]);
-        setActiveBank('images');
-        setMessage({ type: 'success', text: `Imagen subida y URL copiada al portapapeles` });
-      } else {
-        throw new Error(data.error || "Error al subir la imagen");
+      if (!presignData.success) {
+        throw new Error(presignData.error || "Error al obtener URL de carga segura");
       }
+
+      // 2. Subir directamente a Supabase Storage (bypasea límites de Next.js/Easypanel)
+      const uploadRes = await fetch(presignData.signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error("La subida a la nube falló. Verifica tu conexión a internet.");
+      }
+
+      // 3. Usar la URL pública de Supabase (persistente, no depende del servidor)
+      const publicUrl = presignData.publicUrl;
+      navigator.clipboard.writeText(publicUrl);
+      setUploadedImages(prev => [...prev, publicUrl]);
+      setActiveBank('images');
+      setMessage({ type: 'success', text: `✅ Imagen subida a la nube y URL copiada al portapapeles` });
+      setTimeout(() => setMessage(null), 4000);
     } catch (err: unknown) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : String(err) });
     } finally {

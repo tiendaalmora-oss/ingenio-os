@@ -80,6 +80,32 @@ export async function GET(req: NextRequest) {
     const slug = searchParams.get('slug') || 'manual_uploads';
     const folder = searchParams.get('folder') || 'images';
 
+    // Las imágenes se sirven desde Supabase Storage (persistente entre deploys)
+    if (folder === 'images') {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+
+      // Listar la carpeta del slug dentro del bucket 'images'
+      const folderPrefix = slug === 'manual_uploads' ? 'manual_uploads' : slug;
+      const { data: files, error } = await supabase.storage
+        .from('images')
+        .list(folderPrefix, { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
+
+      if (error) {
+        // Si la carpeta no existe todavía, devolver vacío en lugar de error
+        return NextResponse.json({ success: true, files: [] });
+      }
+
+      const urls = (files || [])
+        .filter(f => f.name !== '.emptyFolderPlaceholder')
+        .map(f => `${supabaseUrl}/storage/v1/object/public/images/${folderPrefix}/${f.name}`);
+
+      return NextResponse.json({ success: true, files: urls });
+    }
+
+    // Para otros folders (videos, zip_deploy, etc.) se mantiene el filesystem local
     const targetDir = path.join(process.cwd(), 'public', 'assets', slug, folder);
 
     if (!fs.existsSync(targetDir)) {
