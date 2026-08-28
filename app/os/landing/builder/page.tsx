@@ -267,7 +267,11 @@ export default function LandingBuilderPage() {
       const presignRes = await fetch("/api/videos/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, contentType: file.type })
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          slug: slug.trim() !== "" ? slug.trim() : "manual_uploads",
+        })
       });
       const presignData = await presignRes.json();
 

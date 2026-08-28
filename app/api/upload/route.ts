@@ -80,32 +80,51 @@ export async function GET(req: NextRequest) {
     const slug = searchParams.get('slug') || 'manual_uploads';
     const folder = searchParams.get('folder') || 'images';
 
-    // Las imágenes se sirven desde Supabase Storage (persistente entre deploys)
-    if (folder === 'images') {
+    // Las imágenes y videos se sirven desde Supabase Storage (persistente entre deploys)
+    if (folder === 'images' || folder === 'videos') {
+      const bucketName = folder; // 'images' o 'videos'
       const { createClient } = await import('@supabase/supabase-js');
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
       const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
       const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
 
-      // Listar la carpeta del slug dentro del bucket 'images'
       const folderPrefix = slug === 'manual_uploads' ? 'manual_uploads' : slug;
+
+      // Listar la carpeta del slug dentro del bucket correspondiente
       const { data: files, error } = await supabase.storage
-        .from('images')
+        .from(bucketName)
         .list(folderPrefix, { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
 
-      if (error) {
-        // Si la carpeta no existe todavía, devolver vacío en lugar de error
-        return NextResponse.json({ success: true, files: [] });
+      const urls: string[] = [];
+
+      if (!error && files && files.length > 0) {
+        files
+          .filter(f => f.name !== '.emptyFolderPlaceholder')
+          .forEach(f => {
+            urls.push(`${supabaseUrl}/storage/v1/object/public/${bucketName}/${folderPrefix}/${f.name}`);
+          });
       }
 
-      const urls = (files || [])
-        .filter(f => f.name !== '.emptyFolderPlaceholder')
-        .map(f => `${supabaseUrl}/storage/v1/object/public/images/${folderPrefix}/${f.name}`);
+      // También chequear raíz si es manual_uploads o no encontró en subcarpeta
+      const { data: rootFiles } = await supabase.storage
+        .from(bucketName)
+        .list('', { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
+
+      if (rootFiles && rootFiles.length > 0) {
+        rootFiles
+          .filter(f => f.name !== '.emptyFolderPlaceholder' && f.id)
+          .forEach(f => {
+            const url = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${f.name}`;
+            if (!urls.includes(url)) {
+              urls.push(url);
+            }
+          });
+      }
 
       return NextResponse.json({ success: true, files: urls });
     }
 
-    // Para otros folders (videos, zip_deploy, etc.) se mantiene el filesystem local
+    // Para otros folders (zip_deploy, etc.) se mantiene el filesystem local
     const targetDir = path.join(process.cwd(), 'public', 'assets', slug, folder);
 
     if (!fs.existsSync(targetDir)) {
