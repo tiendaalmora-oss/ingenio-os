@@ -5,6 +5,7 @@ import {
   TrendingUp, Eye, RefreshCw, Database, Cpu, MessageSquare,
   ChevronDown, ChevronUp, BarChart3, Globe
 } from 'lucide-react';
+import { useTenant } from '@/context/TenantContext';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -215,6 +216,7 @@ function DiffCard({ entry }: { entry: AuditEntry }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export function MemoryCenterUI() {
+  const { tenantId }              = useTenant();
   const [view, setView]           = useState<'timeline'|'leads'|'companies'>('timeline');
   const [stats, setStats]         = useState<Stats | null>(null);
   const [timeline, setTimeline]   = useState<AuditEntry[]>([]);
