@@ -146,3 +146,97 @@ export async function completeOnboarding(answers: Record<string, string>) {
 
   return { success: true };
 }
+
+export async function saveMorningBrief(workspaceId: string, briefData: any) {
+  try {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    await prisma.executiveJournal.upsert({
+      where: {
+        workspaceId_date: {
+          workspaceId,
+          date: today
+        }
+      },
+      update: {
+        morningBrief: briefData
+      },
+      create: {
+        workspaceId,
+        date: today,
+        morningBrief: briefData
+      }
+    });
+
+    await prisma.timelineEvent.create({
+      data: {
+        eventType: "RITUAL",
+        description: `☀️ Morning Brief completado: "${briefData.oneThing || 'Prioridad del día establecida'}"`,
+        workspaceId
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving morning brief:", error);
+    return { success: false };
+  }
+}
+
+export async function saveEveningShutdown(workspaceId: string, data: { brainDump: string; summary: any }) {
+  try {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    await prisma.executiveJournal.upsert({
+      where: {
+        workspaceId_date: {
+          workspaceId,
+          date: today
+        }
+      },
+      update: {
+        eveningSummary: data.summary,
+        brainDump: data.brainDump
+      },
+      create: {
+        workspaceId,
+        date: today,
+        eveningSummary: data.summary,
+        brainDump: data.brainDump
+      }
+    });
+
+    await prisma.timelineEvent.create({
+      data: {
+        eventType: "RITUAL",
+        description: `🌙 Evening Shutdown completado. Desconexión ejecutiva registrada.`,
+        workspaceId
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving evening shutdown:", error);
+    return { success: false };
+  }
+}
+
+export async function handleToolAuthorization(executionId: string, approve: boolean) {
+  try {
+    const { ActionEngine } = await import('@/lib/action-engine');
+    if (approve) {
+      await ActionEngine.executeAction(executionId);
+    } else {
+      await prisma.toolExecution.update({
+        where: { id: executionId },
+        data: { status: "REJECTED", executedAt: new Date() }
+      });
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Error handling tool authorization:", error);
+    return { success: false };
+  }
+}

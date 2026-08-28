@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronUp, BarChart3, Globe
 } from 'lucide-react';
 
-const API = 'http://localhost:3000';
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface AuditEntry {
@@ -230,7 +230,8 @@ export function MemoryCenterUI() {
   // ── Fetch stats
   const fetchStats = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/memory/stats`);
+      if (!tenantId) return;
+    const r = await fetch(`${API}/memory/stats`, { headers: { 'x-tenant-id': tenantId } });
       setStats(await r.json());
     } catch {}
   }, []);
@@ -243,7 +244,7 @@ export function MemoryCenterUI() {
       if (search)       params.set('search', search);
       if (fieldFilter)  params.set('field', fieldFilter);
       if (sourceFilter) params.set('source', sourceFilter);
-      const r = await fetch(`${API}/memory/timeline?${params}`);
+      const r = await fetch(`${API}/memory/timeline?${params}`, { headers: { 'x-tenant-id': tenantId } });
       const d = await r.json();
       setTimeline(d.data ?? []);
       setTotal(d.total ?? 0);
@@ -254,7 +255,8 @@ export function MemoryCenterUI() {
   // ── Fetch companies
   const fetchCompanies = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/memory/company`);
+      if (!tenantId) return;
+    const r = await fetch(`${API}/memory/company`, { headers: { 'x-tenant-id': tenantId } });
       const d = await r.json();
       setCompanies(d.companies ?? []);
     } catch {}
@@ -264,7 +266,7 @@ export function MemoryCenterUI() {
   const fetchContact = useCallback(async (contactId: string) => {
     setLoadingContact(true);
     try {
-      const r = await fetch(`${API}/memory/contact/${contactId}`);
+      const r = await fetch(`${API}/memory/contact/${contactId}`, { headers: { 'x-tenant-id': tenantId } });
       setSelectedContact(await r.json());
     } catch {}
     setLoadingContact(false);

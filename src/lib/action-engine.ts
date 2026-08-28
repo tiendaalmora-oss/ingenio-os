@@ -13,6 +13,11 @@ export class ActionEngine {
         { name: "create_task", description: "Crear una tarea en el backlog", category: "Tasks", permissions: "WRITE", parameters: {}, expectedResult: "Tarea encolada" },
         { name: "start_focus_mode", description: "Iniciar modo de enfoque para trabajo profundo", category: "Focus Mode", permissions: "READ", parameters: {}, expectedResult: "UI cambia a Focus Mode" },
         { name: "send_email", description: "Enviar correo a clientes o equipo", category: "Communication", permissions: "CRITICAL", parameters: {}, expectedResult: "Email enviado" },
+        { name: "whatsapp_dispatch", description: "Enviar mensaje o alerta ejecutiva por WhatsApp (WAHA)", category: "Integrations", permissions: "CRITICAL", parameters: { to: "string", text: "string" }, expectedResult: "Mensaje WhatsApp enviado" },
+        { name: "github_sync_blockers", description: "Auditar repositorios y detectar PRs bloqueantes (CTO Mode)", category: "Development", permissions: "READ", parameters: {}, expectedResult: "Lista de bloqueos sincronizada" },
+        { name: "calendar_protect_focus", description: "Bloquear automáticamente 2h de Focus Mode en Google Calendar", category: "Calendar", permissions: "WRITE", parameters: {}, expectedResult: "Bloque de calendario protegido" },
+        { name: "n8n_execute_flow", description: "Disparar webhook de automatización empresarial en n8n", category: "Automation", permissions: "WRITE", parameters: { webhookUrl: "string" }, expectedResult: "Flujo n8n disparado" },
+        { name: "supabase_backup_snapshot", description: "Generar snapshot de estado de datos y réplica", category: "Infrastructure", permissions: "READ", parameters: {}, expectedResult: "Snapshot verificado" },
       ];
 
       for (const skill of coreSkills) {

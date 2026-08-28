@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useTenant } from '@/context/TenantContext';
 
-const API = 'http://localhost:3000';
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const POLL_MS = 10000;
 
 const STAGES = ['Nuevo', 'Contactado', 'Interesado', 'Demo', 'Oferta', 'Venta', 'Cliente'];
@@ -122,7 +122,7 @@ export function CrmUI() {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, tenantId]);
 
   useEffect(() => {
     fetchLeads();

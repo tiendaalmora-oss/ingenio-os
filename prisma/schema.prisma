@@ -41,6 +41,7 @@ model Workspace {
   healthMetrics  HealthMetric[]
   executiveTools ExecutiveTool[]
   toolExecutions ToolExecution[]
+  journals       ExecutiveJournal[]
 }
 
 // 2. Executive DNA
@@ -187,4 +188,17 @@ model ToolExecution {
   workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())
   executedAt      DateTime?
+}
+
+// 6. Diario Ejecutivo y Rituales
+model ExecutiveJournal {
+  id              String   @id @default(uuid())
+  date            DateTime @default(now())
+  morningBrief    Json?
+  eveningSummary  Json?
+  brainDump       String?
+  workspaceId     String
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, date])
 }

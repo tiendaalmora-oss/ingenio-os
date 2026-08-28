@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useTenant } from '@/context/TenantContext';
 
-const API = 'http://localhost:3000';
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 const POLL_MS = 8000;
 
 type Conversation = {
@@ -94,7 +94,7 @@ export function ConversationHubUI() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter]);
+  }, [search, statusFilter, tenantId]);
 
   // ── Auto-poll list ──────────────────────────────────────
   useEffect(() => {

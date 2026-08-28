@@ -20,7 +20,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
     // Simulacin de obtencin de sesin
     const fetchSession = async () => {
       // AQU IRA: const session = await auth.getSession(); setTenantId(session.tenantId);
-      setTenantId('ferreos');
+      setTenantId('tenant-demo-123');
       setIsLoading(false);
     };
     fetchSession();
